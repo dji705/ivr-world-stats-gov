@@ -27,7 +27,11 @@ const VEHICLE_FIELDS = [
 ];
 
 function plateFrom(request) {
-  const url = new URL(request.url);
+  // In Vercel some Node.js runtimes expose request.url as a relative path.
+  // URL() requires an absolute URL, so provide the incoming host as a base.
+  const rawUrl = request?.url || '/';
+  const host = request?.headers?.get?.('host') || 'localhost';
+  const url = new URL(rawUrl, `https://${host}`);
   return (url.searchParams.get('plate') || url.searchParams.get('Digits') || '')
     .replace(/[^0-9]/g, '');
 }
@@ -44,7 +48,7 @@ async function dataGov(resourceId, params = {}, timeoutMs = 8000) {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(url, { signal: controller.signal, headers: { Accept: 'application/json' } });
-    if (!response.ok) throw new Error(`מקור הנתונים החזיר ${response.status}`);
+    if (!response.ok) throw new Error(`מקור הנתו��ים החזיר ${response.status}`);
     const body = await response.json();
     if (!body.success || !body.result) throw new Error('תשובה לא תקינה ממקור הנתונים');
     return body.result;
