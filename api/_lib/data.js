@@ -13,32 +13,29 @@ const VEHICLE_FIELDS = [
   ['mispar_rechev', 'מספר רישוי'], ['tozeret_cd', 'קוד תוצרת'],
   ['sug_degem', 'סוג דגם'], ['tozeret_nm', 'תוצרת הרכב'],
   ['degem_cd', 'קוד דגם'], ['degem_nm', 'דגם הרכב'],
-  ['ramat_gimur', 'רמת גימור'],
-  ['ramat_eivzur_betihuty', 'רמת אבזור בטיחותי'],
+  ['ramat_gimur', 'רמת גימור'], ['ramat_eivzur_betihuty', 'רמת אבזור בטיחותי'],
   ['kvutzat_zihum', 'קבוצת זיהום'], ['shnat_yitzur', 'שנת ייצור'],
   ['degem_manoa', 'דגם מנוע'], ['mivchan_acharon_dt', 'תאריך מבחן אחרון'],
   ['tokef_dt', 'תוקף רישיון הרכב'], ['baalut', 'סוג בעלות'],
-  ['misgeret', 'מספר שלדה'], ['tzeva_cd', 'קוד צבע'],
-  ['tzeva_rechev', 'צבע הרכב'], ['zmig_kidmi', 'מידת צמיג קדמי'],
-  ['zmig_ahori', 'מידת צמיג אחורי'], ['sug_delek_nm', 'סוג דלק'],
-  ['horaat_rishum', 'הוראת רישום'],
-  ['moed_aliya_lakvish', 'מועד עלייה לכביש'],
-  ['kinuy_mishari', 'כינוי מסחרי']
+  ['misgeret', 'מספר שלדה'], ['tzeva_cd', 'קוד צבע'], ['tzeva_rechev', 'צבע הרכב'],
+  ['zmig_kidmi', 'מידת צמיג קדמי'], ['zmig_ahori', 'מידת צמיג אחורי'],
+  ['sug_delek_nm', 'סוג דלק'], ['horaat_rishum', 'הוראת רישום'],
+  ['moed_aliya_lakvish', 'מועד עלייה לכביש'], ['kinuy_mishari', 'כינוי מסחרי']
 ];
 
-function plateFrom(request) {
-  // In Vercel some Node.js runtimes expose request.url as a relative path.
-  // URL() requires an absolute URL, so provide the incoming host as a base.
+function requestUrl(request) {
   const rawUrl = request?.url || '/';
-  const host = request?.headers?.get?.('host') || 'localhost';
-  const url = new URL(rawUrl, `https://${host}`);
+  const host = request?.headers?.host || request?.headers?.get?.('host') || 'localhost';
+  return new URL(rawUrl, `https://${host}`);
+}
+
+function plateFrom(request) {
+  const url = requestUrl(request);
   return (url.searchParams.get('plate') || url.searchParams.get('Digits') || '')
     .replace(/[^0-9]/g, '');
 }
 
-function validatePlate(plate) {
-  return /^[0-9]{5,9}$/.test(plate);
-}
+function validatePlate(plate) { return /^[0-9]{5,9}$/.test(plate); }
 
 async function dataGov(resourceId, params = {}, timeoutMs = 8000) {
   const url = new URL(DATA_API);
@@ -48,7 +45,7 @@ async function dataGov(resourceId, params = {}, timeoutMs = 8000) {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(url, { signal: controller.signal, headers: { Accept: 'application/json' } });
-    if (!response.ok) throw new Error(`מקור הנתו��ים החזיר ${response.status}`);
+    if (!response.ok) throw new Error(`מקור הנתונים החזיר ${response.status}`);
     const body = await response.json();
     if (!body.success || !body.result) throw new Error('תשובה לא תקינה ממקור הנתונים');
     return body.result;
@@ -56,18 +53,14 @@ async function dataGov(resourceId, params = {}, timeoutMs = 8000) {
 }
 
 async function findRecord(resourceId, plate) {
-  const result = await dataGov(resourceId, {
-    limit: '1',
-    filters: JSON.stringify({ mispar_rechev: Number(plate) })
-  });
+  const result = await dataGov(resourceId, { limit: '1', filters: JSON.stringify({ mispar_rechev: Number(plate) }) });
   return result.records?.[0] || null;
 }
 
-function json(response, status = 200) {
-  return new Response(JSON.stringify(response), {
-    status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
-  });
+function json(response, status, res) {
+  res.status(status).setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.end(JSON.stringify(response));
 }
 
 function errorMessage(error) {
@@ -75,4 +68,4 @@ function errorMessage(error) {
   return error.message || 'אירעה שגיאה בלתי צפויה';
 }
 
-export { RESOURCES, VEHICLE_FIELDS, plateFrom, validatePlate, dataGov, findRecord, json, errorMessage };
+export { RESOURCES, VEHICLE_FIELDS, requestUrl, plateFrom, validatePlate, dataGov, findRecord, json, errorMessage };
