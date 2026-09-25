@@ -18,7 +18,7 @@
     label { display:block; margin-bottom:7px; font-weight:bold; } input { width:100%; min-height:46px; padding:10px 12px; border:1px solid #aebdcd; border-radius:8px; direction:ltr; font:inherit; }
     input:focus { outline:3px solid rgba(23,105,170,.2); border-color:var(--primary); } .form-row { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:end; }
     .result { min-height:72px; margin-top:16px; padding:14px; overflow-wrap:anywhere; white-space:pre-wrap; background:#f8fafc; border:1px solid var(--border); border-radius:8px; line-height:1.65; }
-    .fields { display:grid; gap:8px; } .field { display:grid; grid-template-columns:minmax(170px, .8fr) 1fr; gap:12px; padding:8px 0; border-bottom:1px solid var(--border); }
+    .fields { display:grid; gap:8px; } .field { display:grid; grid-template-columns:minmax(170px,.8fr) 1fr; gap:12px; padding:8px 0; border-bottom:1px solid var(--border); }
     .field:last-child { border-bottom:0; } .field-label { font-weight:bold; } .field-value { direction:rtl; word-break:break-word; }
     .success { color:var(--success); } .error { color:var(--error); } .loading { color:var(--muted); } footer { color:var(--muted); text-align:center; font-size:.9rem; }
     @media (max-width:560px) { .form-row { grid-template-columns:1fr; } .form-row button { width:100%; } .field { grid-template-columns:1fr; gap:2px; } }
@@ -29,29 +29,34 @@
   <main class="container">
     <section class="card" aria-labelledby="vehicle-title">
       <h2 id="vehicle-title">בדיקת פרטי רכב לפי מספר רישוי</h2>
-      <form id="vehicle-form"><div class="form-row"><div><label for="plate">מספר רישוי</label><input id="plate" name="plate" inputmode="numeric" pattern="[0-9 -]+" maxlength="10" placeholder="לדוגמה: 1234567" required></div><button type="submit">בדיקת רכב</button></div></form>
+      <form id="vehicle-form"><div class="form-row"><div><label for="vehicle-plate">מספר רישוי</label><input id="vehicle-plate" name="vehicle-plate" inputmode="numeric" pattern="[0-9 -]+" maxlength="10" placeholder="לדוגמה: 1234567" required></div><button type="submit">בדיקת רכב</button></div></form>
       <div id="vehicle-result" class="result" aria-live="polite">הקלידו מספר רישוי כדי להתחיל.</div>
     </section>
-    <section class="card" aria-labelledby="actions-title"><h2 id="actions-title">בדיקות נוספות</h2><div class="actions"><button type="button" id="badge-button">בדיקת תו נכה</button><button type="button" id="kinneret-button">מפלס הכינרת</button></div><div id="extra-result" class="result" aria-live="polite">בחרו בדיקה.</div></section>
+    <section class="card" aria-labelledby="badge-title">
+      <h2 id="badge-title">בדיקה האם לרכב יש תו נכה</h2>
+      <form id="badge-form"><div class="form-row"><div><label for="badge-plate">מספר רישוי לבדיקה</label><input id="badge-plate" name="badge-plate" inputmode="numeric" pattern="[0-9 -]+" maxlength="10" placeholder="הקלידו מספר רישוי" required></div><button type="submit">בדיקת תו נכה</button></div></form>
+      <div id="badge-result" class="result" aria-live="polite">הקלידו מספר רישוי לבדיקה.</div>
+    </section>
+    <section class="card" aria-labelledby="actions-title"><h2 id="actions-title">בדיקות נוס��ות</h2><div class="actions"><button type="button" id="kinneret-button">מפלס הכינרת</button></div><div id="extra-result" class="result" aria-live="polite">בחרו בדיקה.</div></section>
     <footer>הנתונים נמשכים ממקורות ממשלתיים בזמן הבדיקה.</footer>
   </main>
   <script>
-    const vehicleForm=document.querySelector('#vehicle-form'), plateInput=document.querySelector('#plate'), vehicleResult=document.querySelector('#vehicle-result'), extraResult=document.querySelector('#extra-result');
+    const vehicleForm=document.querySelector('#vehicle-form'), vehicleInput=document.querySelector('#vehicle-plate'), vehicleResult=document.querySelector('#vehicle-result');
+    const badgeForm=document.querySelector('#badge-form'), badgeInput=document.querySelector('#badge-plate'), badgeResult=document.querySelector('#badge-result'), extraResult=document.querySelector('#extra-result');
     function setResult(element,message,kind=''){ element.className=`result ${kind}`; element.textContent=message; }
     function formatValue(value){ if(value===null||value===undefined||value==='') return ''; if(typeof value==='object') return JSON.stringify(value,null,2); return String(value); }
-    // The API supplies fields with Hebrew labels. Use them instead of displaying English database keys.
+    function escapeHtml(value){ return String(value).replace(/[&<>'"]/g, character=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character])); }
     function formatVehicle(data){
       if(Array.isArray(data.fields)&&data.fields.length){
         const rows=data.fields.map(field=>`<div class="field"><div class="field-label">${escapeHtml(field.label)}</div><div class="field-value">${escapeHtml(formatValue(field.value))}</div></div>`).join('');
         return `<div class="fields">${rows}</div>`;
       }
-      if(data.message) return escapeHtml(data.message);
-      return escapeHtml(JSON.stringify(data,null,2));
+      return escapeHtml(data.message||JSON.stringify(data,null,2));
     }
-    function escapeHtml(value){ return String(value).replace(/[&<>'"]/g, character=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character])); }
     async function requestJson(url){ const response=await fetch(url,{headers:{Accept:'application/json'}}); const text=await response.text(); let data; try{data=JSON.parse(text);}catch{data={message:text};} if(!response.ok) throw new Error(data.error||data.message||`שגיאה ${response.status}`); return data; }
-    vehicleForm.addEventListener('submit',async event=>{ event.preventDefault(); const plate=plateInput.value.replace(/[^0-9]/g,''); if(!plate) return setResult(vehicleResult,'יש להזין מספר רישוי תקין.','error'); setResult(vehicleResult,'מבצע בדיקה...','loading'); const button=vehicleForm.querySelector('button'); button.disabled=true; try{ const data=await requestJson(`/api/vehicle?plate=${encodeURIComponent(plate)}`); vehicleResult.className='result success'; vehicleResult.innerHTML=formatVehicle(data); }catch(error){setResult(vehicleResult,`הבדיקה נכשלה: ${error.message}`,'error');}finally{button.disabled=false;} });
-    document.querySelector('#badge-button').addEventListener('click',async()=>{ const plate=plateInput.value.replace(/[^0-9]/g,''); if(!plate)return setResult(extraResult,'יש להזין תחילה מספר רישוי.','error'); setResult(extraResult,'בודק תו נכה...','loading'); try{const data=await requestJson(`/api/disability-badge?plate=${encodeURIComponent(plate)}`);setResult(extraResult,data.message||JSON.stringify(data,null,2),data.found?'success':'');}catch(error){setResult(extraResult,`הבדיקה נכשלה: ${error.message}`,'error');} });
+    function cleanPlate(input){ return input.value.replace(/[^0-9]/g,''); }
+    vehicleForm.addEventListener('submit',async event=>{ event.preventDefault(); const plate=cleanPlate(vehicleInput); if(!/^\d{5,9}$/.test(plate)) return setResult(vehicleResult,'יש להקליד מספר לוחית רישוי תקין, באורך 5 עד 9 ספרות.','error'); setResult(vehicleResult,'מבצע בדיקה...','loading'); const button=vehicleForm.querySelector('button'); button.disabled=true; try{ const data=await requestJson(`/api/vehicle?plate=${encodeURIComponent(plate)}`); vehicleResult.className='result success'; vehicleResult.innerHTML=formatVehicle(data); }catch(error){setResult(vehicleResult,`הבדיקה נכשלה: ${error.message}`,'error');}finally{button.disabled=false;} });
+    badgeForm.addEventListener('submit',async event=>{ event.preventDefault(); const plate=cleanPlate(badgeInput); if(!/^\d{5,9}$/.test(plate)) return setResult(badgeResult,'יש להקליד מספר לוחית רישוי תקין, באורך 5 עד 9 ספרות.','error'); setResult(badgeResult,'בודק תו נכה...','loading'); const button=badgeForm.querySelector('button'); button.disabled=true; try{ const data=await requestJson(`/api/disability-badge?plate=${encodeURIComponent(plate)}`); setResult(badgeResult,data.message||JSON.stringify(data,null,2),data.found?'success':''); }catch(error){setResult(badgeResult,`הבדיקה נכשלה: ${error.message}`,'error');}finally{button.disabled=false;} });
     document.querySelector('#kinneret-button').addEventListener('click',async()=>{setResult(extraResult,'מביא את המדידה האחרונה...','loading');try{const data=await requestJson('/api/kinneret');setResult(extraResult,data.message||JSON.stringify(data,null,2),'success');}catch(error){setResult(extraResult,`הבדיקה נכשלה: ${error.message}`,'error');}});
   </script>
 </body>
