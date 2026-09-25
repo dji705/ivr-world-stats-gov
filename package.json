@@ -1,0 +1,8 @@
+{
+  "name": "ivr-world-stats-gov",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": { "test": "node --check api/vehicle.js && node --check api/disability-badge.js && node --check api/kinneret.js && node --check api/yemot.js" }
+}
