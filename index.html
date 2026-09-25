@@ -6,197 +6,53 @@
   <meta name="description" content="מערכת בדיקת רכב, תו נכה ומפלס הכינרת">
   <title>מרכז בדיקות מידע</title>
   <style>
-    :root {
-      color-scheme: light;
-      --primary: #1769aa;
-      --primary-dark: #0d4775;
-      --background: #f4f7fb;
-      --card: #fff;
-      --text: #17202a;
-      --muted: #64748b;
-      --border: #dbe3ed;
-      --success: #137333;
-      --error: #b3261e;
-    }
-
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: var(--background);
-      color: var(--text);
-      font-family: Arial, "Noto Sans Hebrew", sans-serif;
-    }
-    .container { width: min(100% - 32px, 860px); margin: 0 auto; }
-    header {
-      padding: 42px 0 28px;
-      color: #fff;
-      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
-    }
-    h1 { margin: 0 0 10px; font-size: clamp(1.8rem, 5vw, 2.7rem); }
-    header p { margin: 0; opacity: .92; font-size: 1.08rem; }
-    main { padding: 28px 0 48px; }
-    .card {
-      margin-bottom: 18px;
-      padding: 22px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      box-shadow: 0 4px 16px rgba(23, 50, 80, .06);
-    }
-    h2 { margin: 0 0 16px; font-size: 1.25rem; }
-    .actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
-    button {
-      min-height: 48px;
-      padding: 10px 16px;
-      border: 0;
-      border-radius: 9px;
-      color: #fff;
-      background: var(--primary);
-      font: inherit;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    button:hover { background: var(--primary-dark); }
-    button:disabled { cursor: wait; opacity: .65; }
-    label { display: block; margin-bottom: 7px; font-weight: bold; }
-    input {
-      width: 100%;
-      min-height: 46px;
-      padding: 10px 12px;
-      border: 1px solid #aebdcd;
-      border-radius: 8px;
-      direction: ltr;
-      font: inherit;
-    }
-    input:focus { outline: 3px solid rgba(23, 105, 170, .2); border-color: var(--primary); }
-    .form-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
-    .result {
-      min-height: 72px;
-      margin-top: 16px;
-      padding: 14px;
-      overflow-wrap: anywhere;
-      white-space: pre-wrap;
-      background: #f8fafc;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      line-height: 1.65;
-    }
-    .success { color: var(--success); }
-    .error { color: var(--error); }
-    .loading { color: var(--muted); }
-    footer { color: var(--muted); text-align: center; font-size: .9rem; }
-    @media (max-width: 560px) {
-      .form-row { grid-template-columns: 1fr; }
-      .form-row button { width: 100%; }
-    }
+    :root { color-scheme: light; --primary:#1769aa; --primary-dark:#0d4775; --background:#f4f7fb; --card:#fff; --text:#17202a; --muted:#64748b; --border:#dbe3ed; --success:#137333; --error:#b3261e; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:var(--background); color:var(--text); font-family:Arial,"Noto Sans Hebrew",sans-serif; }
+    .container { width:min(100% - 32px,860px); margin:0 auto; }
+    header { padding:42px 0 28px; color:#fff; background:linear-gradient(135deg,var(--primary-dark),var(--primary)); }
+    h1 { margin:0 0 10px; font-size:clamp(1.8rem,5vw,2.7rem); } header p { margin:0; opacity:.92; font-size:1.08rem; }
+    main { padding:28px 0 48px; } .card { margin-bottom:18px; padding:22px; background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 4px 16px rgba(23,50,80,.06); }
+    h2 { margin:0 0 16px; font-size:1.25rem; } .actions { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; }
+    button { min-height:48px; padding:10px 16px; border:0; border-radius:9px; color:#fff; background:var(--primary); font:inherit; font-weight:bold; cursor:pointer; } button:hover { background:var(--primary-dark); } button:disabled { cursor:wait; opacity:.65; }
+    label { display:block; margin-bottom:7px; font-weight:bold; } input { width:100%; min-height:46px; padding:10px 12px; border:1px solid #aebdcd; border-radius:8px; direction:ltr; font:inherit; }
+    input:focus { outline:3px solid rgba(23,105,170,.2); border-color:var(--primary); } .form-row { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:end; }
+    .result { min-height:72px; margin-top:16px; padding:14px; overflow-wrap:anywhere; white-space:pre-wrap; background:#f8fafc; border:1px solid var(--border); border-radius:8px; line-height:1.65; }
+    .fields { display:grid; gap:8px; } .field { display:grid; grid-template-columns:minmax(170px, .8fr) 1fr; gap:12px; padding:8px 0; border-bottom:1px solid var(--border); }
+    .field:last-child { border-bottom:0; } .field-label { font-weight:bold; } .field-value { direction:rtl; word-break:break-word; }
+    .success { color:var(--success); } .error { color:var(--error); } .loading { color:var(--muted); } footer { color:var(--muted); text-align:center; font-size:.9rem; }
+    @media (max-width:560px) { .form-row { grid-template-columns:1fr; } .form-row button { width:100%; } .field { grid-template-columns:1fr; gap:2px; } }
   </style>
 </head>
 <body>
-  <header>
-    <div class="container">
-      <h1>מרכז בדיקות מידע</h1>
-      <p>בדיקת פרטי רכב, תו נכה ומפלס הכינרת</p>
-    </div>
-  </header>
-
+  <header><div class="container"><h1>מרכז בדיקות מידע</h1><p>בדיקת פרטי רכב, תו נכה ומפלס הכינרת</p></div></header>
   <main class="container">
     <section class="card" aria-labelledby="vehicle-title">
       <h2 id="vehicle-title">בדיקת פרטי רכב לפי מספר רישוי</h2>
-      <form id="vehicle-form">
-        <div class="form-row">
-          <div>
-            <label for="plate">מספר רישוי</label>
-            <input id="plate" name="plate" inputmode="numeric" pattern="[0-9 -]+" maxlength="10" placeholder="לדוגמה: 1234567" required>
-          </div>
-          <button type="submit">בדיקת רכב</button>
-        </div>
-      </form>
+      <form id="vehicle-form"><div class="form-row"><div><label for="plate">מספר רישוי</label><input id="plate" name="plate" inputmode="numeric" pattern="[0-9 -]+" maxlength="10" placeholder="לדוגמה: 1234567" required></div><button type="submit">בדיקת רכב</button></div></form>
       <div id="vehicle-result" class="result" aria-live="polite">הקלידו מספר רישוי כדי להתחיל.</div>
     </section>
-
-    <section class="card" aria-labelledby="actions-title">
-      <h2 id="actions-title">בדיקות נוספות</h2>
-      <div class="actions">
-        <button type="button" id="badge-button">בדיקת תו נכה</button>
-        <button type="button" id="kinneret-button">מפלס הכינרת</button>
-      </div>
-      <div id="extra-result" class="result" aria-live="polite">בחרו בדיקה.</div>
-    </section>
-
+    <section class="card" aria-labelledby="actions-title"><h2 id="actions-title">בדיקות נוספות</h2><div class="actions"><button type="button" id="badge-button">בדיקת תו נכה</button><button type="button" id="kinneret-button">מפלס הכינרת</button></div><div id="extra-result" class="result" aria-live="polite">בחרו בדיקה.</div></section>
     <footer>הנתונים נמשכים ממקורות ממשלתיים בזמן הבדיקה.</footer>
   </main>
-
   <script>
-    const vehicleForm = document.querySelector('#vehicle-form');
-    const plateInput = document.querySelector('#plate');
-    const vehicleResult = document.querySelector('#vehicle-result');
-    const extraResult = document.querySelector('#extra-result');
-
-    function setResult(element, message, kind = '') {
-      element.className = `result ${kind}`;
-      element.textContent = message;
-    }
-
-    function formatValue(value) {
-      if (value === null || value === undefined || value === '') return '';
-      if (typeof value === 'object') return JSON.stringify(value, null, 2);
-      return String(value);
-    }
-
-    function formatVehicle(data) {
-      if (Array.isArray(data.counters)) {
-        return data.counters.map(item => `${item.label || item.id}: ${item.value_text || item.value}`).join('\n');
+    const vehicleForm=document.querySelector('#vehicle-form'), plateInput=document.querySelector('#plate'), vehicleResult=document.querySelector('#vehicle-result'), extraResult=document.querySelector('#extra-result');
+    function setResult(element,message,kind=''){ element.className=`result ${kind}`; element.textContent=message; }
+    function formatValue(value){ if(value===null||value===undefined||value==='') return ''; if(typeof value==='object') return JSON.stringify(value,null,2); return String(value); }
+    // The API supplies fields with Hebrew labels. Use them instead of displaying English database keys.
+    function formatVehicle(data){
+      if(Array.isArray(data.fields)&&data.fields.length){
+        const rows=data.fields.map(field=>`<div class="field"><div class="field-label">${escapeHtml(field.label)}</div><div class="field-value">${escapeHtml(formatValue(field.value))}</div></div>`).join('');
+        return `<div class="fields">${rows}</div>`;
       }
-      const record = data.result?.records?.[0] || data.record || data.data || data;
-      if (!record || typeof record !== 'object') return JSON.stringify(data, null, 2);
-      return Object.entries(record)
-        .filter(([key, value]) => key !== '_id' && formatValue(value) !== '')
-        .map(([key, value]) => `${key}: ${formatValue(value)}`)
-        .join('\n');
+      if(data.message) return escapeHtml(data.message);
+      return escapeHtml(JSON.stringify(data,null,2));
     }
-
-    async function requestJson(url) {
-      const response = await fetch(url, { headers: { Accept: 'application/json' } });
-      const text = await response.text();
-      let data;
-      try { data = JSON.parse(text); } catch { data = { message: text }; }
-      if (!response.ok) throw new Error(data.message || `שגיאה ${response.status}`);
-      return data;
-    }
-
-    vehicleForm.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const plate = plateInput.value.replace(/[^0-9]/g, '');
-      if (!plate) return setResult(vehicleResult, 'יש להזין מספר רישוי תקין.', 'error');
-      setResult(vehicleResult, 'מבצע בדיקה...', 'loading');
-      const button = vehicleForm.querySelector('button');
-      button.disabled = true;
-      try {
-        const data = await requestJson(`/api/vehicle?plate=${encodeURIComponent(plate)}`);
-        setResult(vehicleResult, formatVehicle(data), 'success');
-      } catch (error) {
-        setResult(vehicleResult, `הבדיקה נכשלה: ${error.message}`, 'error');
-      } finally { button.disabled = false; }
-    });
-
-    document.querySelector('#badge-button').addEventListener('click', async () => {
-      const plate = plateInput.value.replace(/[^0-9]/g, '');
-      if (!plate) return setResult(extraResult, 'יש להזין תחילה מספר רישוי.', 'error');
-      setResult(extraResult, 'בודק תו נכה...', 'loading');
-      try {
-        const data = await requestJson(`/api/disability-badge?plate=${encodeURIComponent(plate)}`);
-        setResult(extraResult, data.message || JSON.stringify(data, null, 2), data.found ? 'success' : '');
-      } catch (error) { setResult(extraResult, `הבדיקה נכשלה: ${error.message}`, 'error'); }
-    });
-
-    document.querySelector('#kinneret-button').addEventListener('click', async () => {
-      setResult(extraResult, 'מביא את המדידה האחרונה...', 'loading');
-      try {
-        const data = await requestJson('/api/kinneret');
-        setResult(extraResult, data.message || JSON.stringify(data, null, 2), 'success');
-      } catch (error) { setResult(extraResult, `הבדיקה נכשלה: ${error.message}`, 'error'); }
-    });
+    function escapeHtml(value){ return String(value).replace(/[&<>'"]/g, character=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character])); }
+    async function requestJson(url){ const response=await fetch(url,{headers:{Accept:'application/json'}}); const text=await response.text(); let data; try{data=JSON.parse(text);}catch{data={message:text};} if(!response.ok) throw new Error(data.error||data.message||`שגיאה ${response.status}`); return data; }
+    vehicleForm.addEventListener('submit',async event=>{ event.preventDefault(); const plate=plateInput.value.replace(/[^0-9]/g,''); if(!plate) return setResult(vehicleResult,'יש להזין מספר רישוי תקין.','error'); setResult(vehicleResult,'מבצע בדיקה...','loading'); const button=vehicleForm.querySelector('button'); button.disabled=true; try{ const data=await requestJson(`/api/vehicle?plate=${encodeURIComponent(plate)}`); vehicleResult.className='result success'; vehicleResult.innerHTML=formatVehicle(data); }catch(error){setResult(vehicleResult,`הבדיקה נכשלה: ${error.message}`,'error');}finally{button.disabled=false;} });
+    document.querySelector('#badge-button').addEventListener('click',async()=>{ const plate=plateInput.value.replace(/[^0-9]/g,''); if(!plate)return setResult(extraResult,'יש להזין תחילה מספר רישוי.','error'); setResult(extraResult,'בודק תו נכה...','loading'); try{const data=await requestJson(`/api/disability-badge?plate=${encodeURIComponent(plate)}`);setResult(extraResult,data.message||JSON.stringify(data,null,2),data.found?'success':'');}catch(error){setResult(extraResult,`הבדיקה נכשלה: ${error.message}`,'error');} });
+    document.querySelector('#kinneret-button').addEventListener('click',async()=>{setResult(extraResult,'מביא את המדידה האחרונה...','loading');try{const data=await requestJson('/api/kinneret');setResult(extraResult,data.message||JSON.stringify(data,null,2),'success');}catch(error){setResult(extraResult,`הבדיקה נכשלה: ${error.message}`,'error');}});
   </script>
 </body>
 </html>
