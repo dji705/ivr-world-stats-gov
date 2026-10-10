@@ -49,7 +49,7 @@ async function getWorldStats({ timeoutMs = 8000, now = new Date() } = {}) {
   const yearFraction = utcYearProgress(now);
   const birthsPerYear = population.value * birthRate.value / 1000;
   const deathsPerYear = population.value * deathRate.value / 1000;
-  const currentPopulation = population.value * Math.pow(1 + growth.value / 100, Math.max(0, (now.getTime() - Date.UTC(population.year + 1, 0, 1)) / (365.2425 * 86400000)));
+  const currentPopulation = population.value * Math.pow(1 + growth.value / 100, Math.max(0, (now.getTime() - Date.UTC(population.year, 6, 1)) / (365.2425 * 86400000)));
   const counters = [
     makeCounter('population_now', 'אוכלוסיית העולם המשוערת', currentPopulation, population.year, 'הקרנה מנתון האוכלוסייה הרשמי האחרון ושיעור הגידול השנתי'),
     makeCounter('births_today', 'לידות היום', birthsPerYear * dayFraction / 365.2425, birthRate.year, 'אומדן לפי שיעור הלידות השנתי'),
