@@ -1,2 +1,42 @@
-# ivr-world-stats-gov
-Serverless IVR API for vehicle checks, disability badge validation, and Kinneret level status
+# מרכז בדיקות מידע — IVR World Stats
+
+מערכת Serverless עבור Vercel עם API לנתוני רכב, תו נכה, מפלס הכינרת וסטטיסטיקת העולם, כולל ממשק עברי והקראה לשלוחת API של ימות המשיח.
+
+## נתיבי API
+
+| נתיב | שימוש |
+|---|---|
+| `GET /api/vehicle?plate=1234567` | פרטי רכב |
+| `GET /api/disability-badge?plate=1234567` | בדיקת תו נכה |
+| `GET /api/kinneret` | מדידת מפלס הכינרת האחרונה |
+| `GET /api/worldometers` | סטטיסטיקת עולם בפורמט JSON |
+| `GET /api/world-yemot` | תפריט הקראה לסטטיסטיקת עולם בימות המשיח |
+
+## סטטיסטיקת עולם
+
+הנתונים נשלפים מ־World Bank Open Data ללא מפתח API. המונים המחושבים (לידות, תמותה וגידול) הם **אומדנים** שמבוססים על המדדים השנתיים האחרונים הזמינים, ולא ספירה עולמית מדויקת בזמן אמת. כל מונה כולל את שנת המקור.
+
+`/api/worldometers` מחזיר אובייקט JSON עם `ok`, `source`, `fetched_at`, `data_years` ו־`counters`. כל מונה כולל `id`, `label`, `value`, `value_text`, `as_of` ו־`as_of_text`.
+
+### הגדרת ימות המשיח
+
+צרו שלוחה מסוג API והגדירו בקובץ `ext.ini`:
+
+```ini
+type=api
+api_link=https://YOUR-APP.vercel.app/api/world-yemot
+```
+
+בתפריט: 1 אוכלוסיית העולם, 2 לידות היום, 3 לידות השנה, 4 מקרי מוות היום, 5 מקרי מוות השנה, 6 גידול האוכלוסייה היום, 7 גידול האוכלוסייה השנה, 8 הקראת הנתונים ברצף.
+
+ההקראה ממירה מספרים גדולים למילים בעברית כדי למנוע גלישת מספרים במנוע ההקראה, ומוסיפה שנת בסיס והבהרה שמדובר באומדן. ניתן להשתמש ב־`?limit=3` כדי לקצר את הקראת כל הנתונים באפשרות 8.
+
+## התקנה ובדיקות
+
+דרישה: Node.js 18 ומעלה.
+
+```bash
+npm test
+```
+
+פריסה ל־Vercel: חברו את המאגר לפרויקט Vercel, או הריצו `npx vercel --prod`. אין צורך במפתחות API או משתני סביבה.
