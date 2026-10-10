@@ -70,7 +70,7 @@ function parentExtension(apiExtension) {
 
 function readParts(text) {
   const tokens = String(text).match(/\d{1,3}(?:,\d{3})+|\d+\.\d+|\d+|[^\s]+/g) || [];
-  const expanded = tokens.map(token => numberWords(token)).join(' ').replace(/[=,]/g, ' ');
+  const expanded = tokens.map(token => numberWords(token)).join(' ').replace(/[=,.;:!?]/g, ' ');
   return expanded.split(/\s+/).filter(Boolean).map(word => `t-${word}`).join('.');
 }
 
