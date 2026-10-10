@@ -57,7 +57,7 @@ function numberWords(value) {
 
 function digitsToHebrewWords(value) {
   const digits = { '0':'אפס', '1':'אחת', '2':'שתיים', '3':'שלוש', '4':'ארבע', '5':'חמש', '6':'שש', '7':'שבע', '8':'שמונה', '9':'תשע' };
-  return String(value).replace(/\\D/g, '').split('').map(digit => digits[digit]).join(' ');
+  return String(value).replace(/\D/g, '').split('').map(digit => digits[digit]).join(' ');
 }
 
 function parentExtension(apiExtension) {
