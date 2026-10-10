@@ -1,6 +1,6 @@
 function formatNumber(value) {
   const number = Number(value);
-  return Number.isFinite(number) ? Math.round(number).toLocaleString('en-US') : String(value);
+  return Number.isFinite(number) ? number.toLocaleString('en-US', { maximumFractionDigits: 2 }) : String(value);
 }
 
 function smallNumberWords(n) {
