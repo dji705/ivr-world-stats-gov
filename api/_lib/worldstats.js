@@ -18,7 +18,7 @@ async function latestIndicator(indicator, timeoutMs = 8000) {
     if (!response.ok) throw new Error(`World Bank returned HTTP ${response.status}`);
     const payload = await response.json();
     const rows = Array.isArray(payload?.[1]) ? payload[1] : [];
-    const row = rows.find(item => item.value !== null && item.value !== undefined && Number.isFinite(Number(item.value)));
+    const row = rows.sort((a, b) => Number(b.date) - Number(a.date)).find(item => item.value !== null && item.value !== undefined && Number.isFinite(Number(item.value)));
     if (!row) throw new Error(`לא נמצא נתון זמין למדד ${indicator.id}`);
     return { value: Number(row.value), year: Number(row.date) };
   } finally {
