@@ -1,5 +1,5 @@
 import { RESOURCES, VEHICLE_FIELDS, requestUrl, plateFrom, validatePlate, findRecord, dataGov } from './_lib/data.js';
-import { formatNumber, parentExtension, readParts } from './_lib/yemot.js';
+import { formatNumber, parentExtension, readParts, digitsToHebrewWords } from './_lib/yemot.js';
 
 function sendYemot(res, text, goTo = '') {
   const navigation = goTo ? `,go_to_folder=${goTo}` : '';
@@ -68,15 +68,15 @@ export default async function handler(request, res) {
   try {
     if (selected === '2') {
       const record = await findRecord(RESOURCES.disability, plate);
-      return sendYemot(res, record ? `נמצא תו נכה לרכב שמספרו ${plate}` : `לא נמצא תו נכה לרכב שמספרו ${plate}`, back);
+      return sendYemot(res, record ? `נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}` : `לא נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}`, back);
     }
 
     const records = await Promise.all(RESOURCES.vehicles.map(id => findRecord(id, plate)));
     const record = Object.assign({}, ...records.filter(Boolean));
-    if (!Object.keys(record).length) return sendYemot(res, `לא נמצא רכב שמספרו ${plate}`, back);
+    if (!Object.keys(record).length) return sendYemot(res, `לא נמצא רכב שמספרו ${digitsToHebrewWords(plate)}`, back);
     const text = VEHICLE_FIELDS
       .filter(([key]) => record[key] !== null && record[key] !== undefined && String(record[key]).trim() !== '')
-      .map(([key, label]) => `${label} ${typeof record[key] === 'number' ? formatNumber(record[key]) : record[key]}`)
+      .map(([key, label]) => `${label} ${key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key])}`)
       .join(' ');
     return sendYemot(res, text, back);
   } catch (_) {
