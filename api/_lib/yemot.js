@@ -32,7 +32,11 @@ function integerToHebrewWords(value) {
   for (const [scale, label] of scales) {
     if (n >= scale) {
       const group = Math.floor(n / scale);
-      parts.push(integerToHebrewWords(group) + ' ' + label);
+      let spokenGroup;
+      if (group === 1) spokenGroup = scale === 1e3 ? '' : '';
+      else if (group === 2) spokenGroup = scale === 1e3 ? 'אלפיים' : 'שני ' + label;
+      else spokenGroup = integerToHebrewWords(group) + ' ' + label;
+      parts.push(spokenGroup || label);
       n %= scale;
     }
   }
@@ -51,6 +55,11 @@ function numberWords(value) {
   return str;
 }
 
+function digitsToHebrewWords(value) {
+  const digits = { '0':'אפס', '1':'אחת', '2':'שתיים', '3':'שלוש', '4':'ארבע', '5':'חמש', '6':'שש', '7':'שבע', '8':'שמונה', '9':'תשע' };
+  return String(value).replace(/\\D/g, '').split('').map(digit => digits[digit]).join(' ');
+}
+
 function parentExtension(apiExtension) {
   if (!apiExtension) return '';
   const clean = String(apiExtension).split('^')[0];
@@ -65,4 +74,4 @@ function readParts(text) {
   return expanded.split(/\s+/).filter(Boolean).map(word => `t-${word}`).join('.');
 }
 
-export { formatNumber, integerToHebrewWords, numberWords, parentExtension, readParts };
+export { formatNumber, integerToHebrewWords, numberWords, digitsToHebrewWords, parentExtension, readParts };
