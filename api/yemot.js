@@ -1,12 +1,17 @@
 import { RESOURCES, VEHICLE_FIELDS, requestUrl, plateFrom, validatePlate, findRecord, dataGov } from './_lib/data.js';
 import { formatNumber, parentExtension, readParts, digitsToHebrewWords } from './_lib/yemot.js';
 
-function sendYemot(res, text, goTo = '') {
+function sendYemot(res, text, goTo = '', inputMode = 'menu') {
   const navigation = goTo ? `,go_to_folder=${goTo}` : '';
   res.status(200).setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
-  // Collect up to 9 digits; # confirms the entry.
-  res.end(`read=${readParts(text)}=wm_nav,no,1,1,9,Digits,no,no,#,,1,Ok${navigation}`);
+
+  // Menu: accept a single key immediately. Plate entry: collect up to 9 digits
+  // and submit only when the caller presses #.
+  const input = inputMode === 'plate'
+    ? 'wm_nav,no,1,1,9,Digits,no,no,#,,1,Ok'
+    : 'wm_nav,no,1,1,1,Digits,no,no,,,1,Ok';
+  res.end(`read=${readParts(text)}=${input}${navigation}`);
 }
 
 function getChoice(url) {
@@ -17,12 +22,12 @@ function getChoice(url) {
 }
 
 function menuText() {
-  return 'ברוכים הבאים למרכז בדיקות מידע. לבדיקת פרטי רכב לפי מספר רישוי הקישו 1. לבדיקת תו נכה הקישו 2. לבדיקת מפלס הכינרת הקישו 3.';
+  return 'ברוכים הבאים למרכז המידע הטלפוני.\nלבירור פרטי רכב לפי מספר רישוי, הקישו 1.\nלבדיקת זכאות לתו נכה לרכב, הקישו 2.\nלשמיעת מפלס הכינרת העדכני, הקישו 3.';
 }
 
 function promptForChoice(choice) {
-  if (choice === '1') return 'בדיקת פרטי רכב. הקלידו את מספר הרישוי ולסיום הקישו סולמית.';
-  if (choice === '2') return 'בדיקת תו נכה. הקלידו את מספר הרישוי ולסיום הקישו סולמית.';
+  if (choice === '1') return 'נבחרה בדיקת פרטי רכב. הקלידו כעת את מספר הרישוי, ספרה אחר ספרה, ולסיום הקישו סולמית.';
+  if (choice === '2') return 'נבחרה בדיקת תו נכה. הקלידו כעת את מספר הרישוי, ספרה אחר ספרה, ולסיום הקישו סולמית.';
   if (choice === '3') return '';
   return 'הבחירה אינה תקינה. ' + menuText();
 }
@@ -48,7 +53,7 @@ export default async function handler(request, res) {
   // Do not navigate back to the parent after the prompt: the caller must enter
   // the plate number and confirm it with # first.
   if (['1', '2'].includes(selected) && (!digits || digits === selected)) {
-    return sendYemot(res, promptForChoice(selected));
+    return sendYemot(res, promptForChoice(selected), '', 'plate');
   }
 
   if (selected === '3' && (!digits || digits === '3')) {
@@ -67,8 +72,8 @@ export default async function handler(request, res) {
   if (selected !== '1' && selected !== '2') return sendYemot(res, 'הבחירה אינה תקינה. ' + menuText(), back);
 
   const plate = plateFrom(request);
-  if (!plate) return sendYemot(res, promptForChoice(selected));
-  if (!validatePlate(plate)) return sendYemot(res, 'מספר הרישוי שהוקלד אינו תקין. יש להקליד בין 5 ל 9 ספרות ולסיום להקיש סולמית.', back);
+  if (!plate) return sendYemot(res, promptForChoice(selected), '', 'plate');
+  if (!validatePlate(plate)) return sendYemot(res, 'מספר הרישוי שהוקלד אינו תקין. יש להקליד בין 5 ל 9 ספרות ולסיום להקיש סולמית.', back, 'plate');
 
   try {
     if (selected === '2') {
