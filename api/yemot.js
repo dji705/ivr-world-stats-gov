@@ -1,62 +1,36 @@
 import { RESOURCES, VEHICLE_FIELDS, requestUrl, plateFrom, validatePlate, findRecord, dataGov } from './_lib/data.js';
 import { formatNumber, parentExtension, readParts, digitsToHebrewWords } from './_lib/yemot.js';
 
-function sendYemot(res, text, goTo = '', inputMode = 'menu') {
+function sendYemot(res, text, goTo = '') {
   const navigation = goTo ? `,go_to_folder=${goTo}` : '';
   res.status(200).setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
 
-  // Menu: accept a single key immediately. Plate entry: collect up to 9 digits
-  // and submit only when the caller presses #.
-  const input = inputMode === 'plate'
-    ? 'wm_nav,no,1,1,9,Digits,no,no,#,,1,Ok'
-    : 'wm_nav,no,1,1,1,Digits,no,no,,,1,Ok';
-  res.end(`read=${readParts(text)}=${input}${navigation}`);
-}
-
-function getChoice(url) {
-  return url.searchParams.get('choice') ||
-    url.searchParams.get('menu') ||
-    url.searchParams.get('ApiParam') ||
-    url.searchParams.get('ApiParam1') || '';
+  // One complete keypad entry per call: service key + (optional) plate + #.
+  // This avoids losing the selected service between separate IVR requests.
+  res.end(`read=${readParts(text)}=wm_nav,no,1,1,10,Digits,no,no,#,,1,Ok${navigation}`);
 }
 
 function menuText() {
-  return 'ברוכים הבאים למרכז המידע הטלפוני.\nלבירור פרטי רכב לפי מספר רישוי, הקישו 1.\nלבדיקת זכאות לתו נכה לרכב, הקישו 2.\nלשמיעת מפלס הכינרת העדכני, הקישו 3.';
-}
-
-function promptForChoice(choice) {
-  if (choice === '1') return 'נבחרה בדיקת פרטי רכב. הקלידו כעת את מספר הרישוי, ספרה אחר ספרה, ולסיום הקישו סולמית.';
-  if (choice === '2') return 'נבחרה בדיקת תו נכה. הקלידו כעת את מספר הרישוי, ספרה אחר ספרה, ולסיום הקישו סולמית.';
-  if (choice === '3') return '';
-  return 'הבחירה אינה תקינה. ' + menuText();
-}
-
-function hebrewDate(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('he-IL');
+  return 'ברוכים הבאים למרכז המידע הטלפוני. לבדיקת פרטי רכב הקישו 1, ולאחריו את מספר הרישוי. לבדיקת תו נכה הקישו 2, ולאחריו את מספר הרישוי. לשמיעת מפלס הכינרת הקישו 3. לאחר ההקלדה הקישו סולמית לאישור. לדוגמה, לבדיקת רכב הקישו 1 ולאחריו את מספר הרישוי וסולמית.';
 }
 
 export default async function handler(request, res) {
   const url = requestUrl(request);
-  const digits = url.searchParams.get('Digits') || '';
-  const choice = getChoice(url);
+  const rawDigits = url.searchParams.get('Digits') || url.searchParams.get('plate') || '';
+  const digits = String(rawDigits).replace(/[^0-9]/g, '');
   const back = parentExtension(url.searchParams.get('ApiExtension'));
 
-  // A fresh menu request.
-  if (!choice && !digits) return sendYemot(res, menuText(), back);
+  // Always show the same menu when no keypad input was supplied.
+  if (!digits) return sendYemot(res, menuText(), back);
 
-  // The menu key must be handled before any generic choice parameter.
-  const selected = ['1', '2', '3'].includes(digits) ? digits : choice;
+  // The first digit selects the service. For vehicle-related checks, the
+  // remaining digits are the license plate. This keeps the whole flow in one
+  // keypad collection and does not depend on session variables being retained.
+  const selected = digits[0];
+  const plate = digits.slice(1);
 
-  // Do not navigate back to the parent after the prompt: the caller must enter
-  // the plate number and confirm it with # first.
-  if (['1', '2'].includes(selected) && (!digits || digits === selected)) {
-    return sendYemot(res, promptForChoice(selected), '', 'plate');
-  }
-
-  if (selected === '3' && (!digits || digits === '3')) {
+  if (selected === '3' && digits === '3') {
     try {
       const result = await dataGov(RESOURCES.kinneret, { limit: '1', sort: 'Survey_Date desc' });
       const record = result.records?.[0];
@@ -69,11 +43,13 @@ export default async function handler(request, res) {
     }
   }
 
-  if (selected !== '1' && selected !== '2') return sendYemot(res, 'הבחירה אינה תקינה. ' + menuText(), back);
+  if (selected !== '1' && selected !== '2') {
+    return sendYemot(res, 'הקלט לא זוהה. ' + menuText(), back);
+  }
 
-  const plate = plateFrom(request);
-  if (!plate) return sendYemot(res, promptForChoice(selected), '', 'plate');
-  if (!validatePlate(plate)) return sendYemot(res, 'מספר הרישוי שהוקלד אינו תקין. יש להקליד בין 5 ל 9 ספרות ולסיום להקיש סולמית.', back, 'plate');
+  if (!validatePlate(plate)) {
+    return sendYemot(res, 'מספר הרישוי לא נקלט בצורה תקינה. יש להקיש תחילה 1 לבדיקת רכב או 2 לבדיקת תו נכה, לאחר מכן 5 עד 9 ספרות של מספר הרישוי, ולסיום סולמית. ' + menuText(), back);
+  }
 
   try {
     if (selected === '2') {
@@ -85,7 +61,9 @@ export default async function handler(request, res) {
 
     const records = await Promise.all(RESOURCES.vehicles.map(id => findRecord(id, plate)));
     const record = Object.assign({}, ...records.filter(Boolean));
-    if (!Object.keys(record).length) return sendYemot(res, `לא נמצא רכב שמספרו ${digitsToHebrewWords(plate)}.`, back);
+    if (!Object.keys(record).length) {
+      return sendYemot(res, `לא נמצא רכב שמספרו ${digitsToHebrewWords(plate)}.`, back);
+    }
 
     const text = VEHICLE_FIELDS
       .filter(([key]) => record[key] !== null && record[key] !== undefined && String(record[key]).trim() !== '')
