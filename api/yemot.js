@@ -52,7 +52,7 @@ export default async function handler(request, res) {
   if (extension === '81') {
     if (!digits) return sendYemot(res, platePrompt('1'));
     if (!validatePlate(digits)) {
-      return sendYemot(res, 'מספר הרישוי לא תקין. יש להקיש מספר בן 5 עד 9 ספרות ולסיים בסולמית.', back);
+      return sendYemot(res, 'מספר הרישוי לא תקין. יש להקיש שוב מספר בן 5 עד 9 ספרות ולסיים בסולמית.');
     }
     try {
       const records = await Promise.all(RESOURCES.vehicles.map(id => findRecord(id, digits)));
