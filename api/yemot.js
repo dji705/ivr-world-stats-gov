@@ -27,7 +27,7 @@ export default async function handler(request, res) {
   const digits = String(rawDigits).replace(/[^0-9]/g, '');
   const back = parentExtension(url.searchParams.get('ApiExtension'));
 
-  if (!digits) return sendYemot(res, menuText(), back, 'menu');
+  if (!digits) return sendYemot(res, menuText(), back, 'combined');
 
   const service = digits[0];
   const plate = digits.slice(1);
@@ -70,7 +70,7 @@ export default async function handler(request, res) {
 
     const details = VEHICLE_FIELDS
       .filter(([key]) => record[key] !== null && record[key] !== undefined && String(record[key]).trim() !== '')
-      .map(([key, label]) => `${label}: ${key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key)}`)
+      .map(([key, label]) => `${label}: ${key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key])}`)
       .join('. ');
 
     return sendYemot(res, `תוצאות הבדיקה. ${details}`, back, 'menu');
