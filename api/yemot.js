@@ -77,7 +77,7 @@ export default async function handler(request, res) {
       }
       const details = VEHICLE_FIELDS
         .filter(([key]) => record[key] !== null && record[key] !== undefined && String(record[key]).trim() !== '')
-        .map(([key, label]) => `${label}: ${key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key)}`)
+        .map(([key, label]) => `${label}: ${key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key])}`)
         .join('. ');
       return sendYemot(res, `תוצאות בדיקת הרכב. ${details}`, { goTo: back });
     } catch (_) {
