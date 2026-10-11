@@ -1,13 +1,14 @@
 import { RESOURCES, VEHICLE_FIELDS, requestUrl, validatePlate, findRecord, dataGov } from './_lib/data.js';
 import { formatNumber, parentExtension, readParts, digitsToHebrewWords } from './_lib/yemot.js';
 
-function sendYemot(res, text, goTo = '', mode = 'menu') {
+function sendYemot(res, text, goTo = '') {
   const navigation = goTo ? `,go_to_folder=${goTo}` : '';
   res.status(200).setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
-  const inputCommand = mode === 'combined'
-    ? 'wm_nav,no,1,1,10,Digits,no,no,#,,1,Ok'
-    : 'wm_nav,no,1,1,1,Digits,no,no,,,1,Ok';
+
+  // קלט אחיד: המשתמש מקיש בחירה, ואם צריך גם מספר רכב, ואז סולמית.
+  // משתמשים בתחביר wm_nav הרגיל של ימות, בלי פרמטר סולמית נוסף.
+  const inputCommand = 'wm_nav,no,1,1,10,Digits,no,no,,,1,Ok';
   res.end(`read=${readParts(text)}=${inputCommand}${navigation}`);
 }
 
@@ -27,7 +28,7 @@ export default async function handler(request, res) {
   const digits = String(rawDigits).replace(/[^0-9]/g, '');
   const back = parentExtension(url.searchParams.get('ApiExtension'));
 
-  if (!digits) return sendYemot(res, menuText(), back, 'combined');
+  if (!digits) return sendYemot(res, menuText(), back);
 
   const service = digits[0];
   const plate = digits.slice(1);
@@ -36,24 +37,24 @@ export default async function handler(request, res) {
     try {
       const result = await dataGov(RESOURCES.kinneret, { limit: '1', sort: 'Survey_Date desc' });
       const record = result.records?.[0];
-      if (!record) return sendYemot(res, 'לא נמצאה מדידה עדכנית של מפלס הכינרת.', back, 'menu');
+      if (!record) return sendYemot(res, 'לא נמצאה מדידה עדכנית של מפלס הכינרת.', back);
       const level = Number(record.Kinneret_Level);
       const levelText = Number.isFinite(level) ? formatNumber(level) : String(record.Kinneret_Level);
-      return sendYemot(res, `מפלס הכינרת במדידה מתאריך ${hebrewDate(record.Survey_Date)} הוא ${levelText} מטרים.`, back, 'menu');
+      return sendYemot(res, `מפלס הכינרת במדידה מתאריך ${hebrewDate(record.Survey_Date)} הוא ${levelText} מטרים.`, back);
     } catch (_) {
-      return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני מפלס הכינרת. אפשר לנסות שוב.', back, 'menu');
+      return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני מפלס הכינרת. אפשר לנסות שוב.', back);
     }
   }
 
   if (service !== '1' && service !== '2') {
-    return sendYemot(res, 'לא זיהיתי את הבחירה. ' + menuText(), back, 'menu');
+    return sendYemot(res, 'לא זיהיתי את הבחירה. ' + menuText(), back);
   }
 
   if (!validatePlate(plate)) {
     const instructions = service === '1'
       ? 'לבדיקת פרטי רכב יש להקיש 1, אחריו מספר רישוי בן 5 עד 9 ספרות, ולסיים בסולמית.'
       : 'לבדיקת תו נכה יש להקיש 2, אחריו מספר רישוי בן 5 עד 9 ספרות, ולסיים בסולמית.';
-    return sendYemot(res, instructions, back, 'combined');
+    return sendYemot(res, instructions, back);
   }
 
   try {
@@ -61,20 +62,20 @@ export default async function handler(request, res) {
       const record = await findRecord(RESOURCES.disability, plate);
       return sendYemot(res, record
         ? `נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.`
-        : `לא נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.`, back, 'menu');
+        : `לא נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.`, back);
     }
 
     const records = await Promise.all(RESOURCES.vehicles.map(id => findRecord(id, plate)));
     const record = Object.assign({}, ...records.filter(Boolean));
-    if (!Object.keys(record).length) return sendYemot(res, `לא נמצא רכב שמספרו ${digitsToHebrewWords(plate)}.`, back, 'menu');
+    if (!Object.keys(record).length) return sendYemot(res, `לא נמצא רכב שמספרו ${digitsToHebrewWords(plate)}.`, back);
 
     const details = VEHICLE_FIELDS
       .filter(([key]) => record[key] !== null && record[key] !== undefined && String(record[key]).trim() !== '')
       .map(([key, label]) => `${label}: ${key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key])}`)
       .join('. ');
 
-    return sendYemot(res, `תוצאות הבדיקה. ${details}`, back, 'menu');
+    return sendYemot(res, `תוצאות הבדיקה. ${details}`, back);
   } catch (_) {
-    return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני הרכב. אפשר לנסות שוב מאוחר יותר.', back, 'menu');
+    return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני הרכב. אפשר לנסות שוב מאוחר יותר.', back);
   }
 }
