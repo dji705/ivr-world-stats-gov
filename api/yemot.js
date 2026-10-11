@@ -6,11 +6,16 @@ function sendYemot(res, text, options = {}) {
   res.status(200).setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
 
-  // תחביר read של ימות: שם המשתנה מוגדר אחרי הטקסט, ולא wm_nav.
-  // הקלט נשלח תחת inputName; מספר רכב נקלט כספרות עד 9 ספרות.
+  // כשצריך לעבור לשלוחה אחרת, לא משתמשים ב-read כי הוא ממתין להקשה נוספת.
+  // משמיעים את ההודעה ומעבירים מיד לשלוחה המבוקשת.
+  if (goTo) {
+    res.end(`id_list_message=${readParts(text)}\ngo_to_folder=/${goTo}`);
+    return;
+  }
+
+  // בתפריט או בבקשת מספר רכב משתמשים ב-read כדי לקלוט קלט מהמאזין.
   const readCommand = `read=${readParts(text)}=${inputName},yes,${min},${max},Digits,yes,no,*,`;
-  const navigation = goTo ? `\ngo_to_folder=/${goTo}` : '';
-  res.end(readCommand + navigation);
+  res.end(readCommand);
 }
 
 function menuText() {
