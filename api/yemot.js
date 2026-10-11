@@ -1,24 +1,26 @@
 import { RESOURCES, VEHICLE_FIELDS, requestUrl, validatePlate, findRecord, dataGov } from './_lib/data.js';
 import { formatNumber, parentExtension, readParts, digitsToHebrewWords } from './_lib/yemot.js';
 
-function sendYemot(res, text, goTo = '') {
-  const navigation = goTo ? `,go_to_folder=${goTo}` : '';
+function sendYemot(res, text, options = {}) {
+  const { goTo = '', inputName = 'Choice', min = 1, max = 1 } = options;
   res.status(200).setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
 
-  // קליטת מקשים בימות המשיח. מספרי רכב נשארים ספרות, ללא המרת T9 לאותיות.
-  const inputCommand = 'wm_nav,no,1,1,5,Digits,no,no,,,1,Ok';
-  res.end(`read=${readParts(text)}=${inputCommand}${navigation}`);
+  // תחביר read של ימות: שם המשתנה מוגדר אחרי הטקסט, ולא wm_nav.
+  // הקלט נשלח תחת inputName; מספר רכב נקלט כספרות עד 9 ספרות.
+  const readCommand = `read=${readParts(text)}=${inputName},yes,${min},${max},Digits,yes,no,*,`;
+  const navigation = goTo ? `\ngo_to_folder=/${goTo}` : '';
+  res.end(readCommand + navigation);
 }
 
 function menuText() {
-  return 'ברוכים הבאים למערכת המידע הטלפונית. לבדיקת פרטי רכב הקישו 1. לבדיקת תו נכה הקישו 2. לקבלת מפלס הכינרת הקישו 3. לבחירת פעולה חדשה הקישו את המספר המתאים.';
+  return 'ברוכים הבאים למערכת המידע הטלפונית. לבדיקת פרטי רכב הקישו 1. לבדיקת תו נכה הקישו 2. לקבלת מפלס הכינרת הקישו 3.';
 }
 
 function platePrompt(service) {
   return service === '2'
-    ? 'בדיקת תו נכה. אנא הקישו את מספר הרישוי וסיימו בסולמית.'
-    : 'בדיקת פרטי רכב. אנא הקישו את מספר הרישוי וסיימו בסולמית.';
+    ? 'בדיקת תו נכה. אנא הקישו את מספר הרישוי, בין 5 ל 9 ספרות, ולסיום הקישו סולמית.'
+    : 'בדיקת פרטי רכב. אנא הקישו את מספר הרישוי, בין 5 ל 9 ספרות, ולסיום הקישו סולמית.';
 }
 
 function hebrewDate(value) {
@@ -36,73 +38,81 @@ function leafExtension(apiExtension) {
 
 export default async function handler(request, res) {
   const url = requestUrl(request);
-
-  // ימות עשויה למסור את ההקשות בשם ApiPhoneInput, Digits או val.
-  // מסירים תווים שאינם ספרות לצורך בחירת שירות/מספר רכב, בלי לפענח אותם לאותיות.
-  const rawInput = url.searchParams.get('ApiPhoneInput')
-    ?? url.searchParams.get('Digits')
-    ?? url.searchParams.get('val')
-    ?? url.searchParams.get('plate')
-    ?? '';
-  const digits = String(rawInput).replace(/[^0-9]/g, '');
   const extension = leafExtension(url.searchParams.get('ApiExtension'));
   const back = parentExtension(url.searchParams.get('ApiExtension'));
 
-  // שלוחה 1: תחילה משמיעה הנחיה; בהקשה הבאה מקבלת מספר רכב.
-  if (extension === '81') {
-    if (!digits) return sendYemot(res, platePrompt('1'));
-    if (!validatePlate(digits)) {
-      return sendYemot(res, 'מספר הרישוי לא תקין. יש להקיש שוב מספר בן 5 עד 9 ספרות ולסיים בסולמית.');
+  // שלוחות 81/82: הקריאה הראשונה מבקשת מספר רישוי. ימות מחזירה אותו
+  // בפרמטר ApiPhoneInput שהוגדר בפקודת read.
+  if (extension === '81' || extension === '82') {
+    const rawPlate = url.searchParams.get('ApiPhoneInput')
+      ?? url.searchParams.get('plate')
+      ?? url.searchParams.get('Digits')
+      ?? url.searchParams.get('val')
+      ?? '';
+    const plate = String(rawPlate).replace(/[^0-9]/g, '');
+
+    if (!plate) {
+      return sendYemot(res, platePrompt(extension === '82' ? '2' : '1'), {
+        inputName: 'ApiPhoneInput', min: 5, max: 9
+      });
     }
+    if (!validatePlate(plate)) {
+      return sendYemot(res, 'מספר הרישוי לא תקין. הקישו מספר בן 5 עד 9 ספרות ונסו שוב.', {
+        inputName: 'ApiPhoneInput', min: 5, max: 9
+      });
+    }
+
     try {
-      const records = await Promise.all(RESOURCES.vehicles.map(id => findRecord(id, digits)));
+      if (extension === '82') {
+        const record = await findRecord(RESOURCES.disability, plate);
+        return sendYemot(res, record
+          ? `נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.`
+          : `לא נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.`, { goTo: back });
+      }
+
+      const records = await Promise.all(RESOURCES.vehicles.map(id => findRecord(id, plate)));
       const record = Object.assign({}, ...records.filter(Boolean));
       if (!Object.keys(record).length) {
-        return sendYemot(res, `לא נמצא רכב שמספרו ${digitsToHebrewWords(digits)}.`, back);
+        return sendYemot(res, `לא נמצא רכב שמספרו ${digitsToHebrewWords(plate)}.`, { goTo: back });
       }
       const details = VEHICLE_FIELDS
         .filter(([key]) => record[key] !== null && record[key] !== undefined && String(record[key]).trim() !== '')
-        .map(([key, label]) => `${label}: ${key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key])}`)
+        .map(([key, label]) => `${label}: ${key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key)}`)
         .join('. ');
-      return sendYemot(res, `תוצאות בדיקת הרכב. ${details}`, back);
+      return sendYemot(res, `תוצאות בדיקת הרכב. ${details}`, { goTo: back });
     } catch (_) {
-      return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני הרכב. אפשר לנסות שוב מאוחר יותר.', back);
+      return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני הבדיקה. אפשר לנסות שוב מאוחר יותר.', { goTo: back });
     }
   }
 
-  // שלוחה 2: שלב נפרד להזנת מספר הרכב לצורך בדיקת תו נכה.
-  if (extension === '82') {
-    if (!digits) return sendYemot(res, platePrompt('2'));
-    if (!validatePlate(digits)) {
-      return sendYemot(res, 'מספר הרישוי לא תקין. יש להקיש מספר בן 5 עד 9 ספרות ולסיים בסולמית.', back);
-    }
-    try {
-      const record = await findRecord(RESOURCES.disability, digits);
-      return sendYemot(res, record
-        ? `נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(digits)}.`
-        : `לא נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(digits)}.`, back);
-    } catch (_) {
-      return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני תו הנכה. אפשר לנסות שוב מאוחר יותר.', back);
-    }
+  // תפריט ראשי: מקש יחיד נשמר ב-Choice. לא מערבבים אותו עם מספר הרכב.
+  const rawChoice = url.searchParams.get('Choice')
+    ?? url.searchParams.get('ApiPhoneInput')
+    ?? url.searchParams.get('Digits')
+    ?? url.searchParams.get('val')
+    ?? '';
+  const choice = String(rawChoice).replace(/[^0-9]/g, '');
+
+  if (!choice) {
+    return sendYemot(res, menuText(), { inputName: 'Choice', min: 1, max: 1 });
   }
-
-  // שלוחה ראשית: בחירת שירות בלבד, ללא צירוף מספר הרכב לאותה הקשה.
-  if (!digits) return sendYemot(res, menuText(), back);
-  if (digits === '1') return sendYemot(res, 'נבחרה בדיקת פרטי רכב. מעביר לשלב הזנת מספר הרישוי.', '81');
-  if (digits === '2') return sendYemot(res, 'נבחרה בדיקת תו נכה. מעביר לשלב הזנת מספר הרישוי.', '82');
-
-  if (digits === '3') {
+  if (choice === '1') {
+    return sendYemot(res, 'נבחרה בדיקת פרטי רכב. עוברים להזנת מספר הרישוי.', { goTo: '81' });
+  }
+  if (choice === '2') {
+    return sendYemot(res, 'נבחרה בדיקת תו נכה. עוברים להזנת מספר הרישוי.', { goTo: '82' });
+  }
+  if (choice === '3') {
     try {
       const result = await dataGov(RESOURCES.kinneret, { limit: '1', sort: 'Survey_Date desc' });
       const record = result.records?.[0];
-      if (!record) return sendYemot(res, 'לא נמצאה מדידה עדכנית של מפלס הכינרת.', back);
+      if (!record) return sendYemot(res, 'לא נמצאה מדידה עדכנית של מפלס הכינרת.', { goTo: back });
       const level = Number(record.Kinneret_Level);
       const levelText = Number.isFinite(level) ? formatNumber(level) : String(record.Kinneret_Level);
-      return sendYemot(res, `מפלס הכינרת במדידה מתאריך ${hebrewDate(record.Survey_Date)} הוא ${levelText} מטרים.`, back);
+      return sendYemot(res, `מפלס הכינרת במדידה מתאריך ${hebrewDate(record.Survey_Date)} הוא ${levelText} מטרים.`, { goTo: back });
     } catch (_) {
-      return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני מפלס הכינרת. אפשר לנסות שוב.', back);
+      return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני מפלס הכינרת. אפשר לנסות שוב.', { goTo: back });
     }
   }
-
-  return sendYemot(res, 'הבחירה לא זוהתה. ' + menuText(), back);
+  return sendYemot(res, 'הבחירה לא זוהתה. ' + menuText(), { inputName: 'Choice', min: 1, max: 1 });
 }
