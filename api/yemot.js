@@ -14,7 +14,8 @@ function sendYemot(res, text, options = {}) {
   }
 
   // בתפריט או בבקשת מספר רכב משתמשים ב-read כדי לקלוט קלט מהמאזין.
-  const readCommand = `read=${readParts(text)}=${inputName},yes,${min},${max},Digits,yes,no,*,`;
+  // השדה שאחרי שם המשתנה נשאר ריק כדי לא להפעיל מצב אישור שמחזיר את המתקשר לתפריט.
+  const readCommand = `read=${readParts(text)}=${inputName},,${min},${max},Digits,yes,no,*,`;
   res.end(readCommand);
 }
 
