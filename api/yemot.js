@@ -91,6 +91,20 @@ export default async function handler(request, res) {
     }
   }
 
+  // שלוחה 83: לאחר בחירה 3, מביאים ומשמיעים את מפלס הכינרת בלי בקשת אישור או הקשה נוספת.
+  if (extension === '83') {
+    try {
+      const result = await dataGov(RESOURCES.kinneret, { limit: '1', sort: 'Survey_Date desc' });
+      const record = result.records?.[0];
+      if (!record) return sendYemot(res, 'לא נמצאה מדידה עדכנית של מפלס הכינרת.', { goTo: back });
+      const level = Number(record.Kinneret_Level);
+      const levelText = Number.isFinite(level) ? formatNumber(level) : String(record.Kinneret_Level);
+      return sendYemot(res, `מפלס הכינרת במדידה מתאריך ${hebrewDate(record.Survey_Date)} הוא ${levelText} מטרים.`, { goTo: back });
+    } catch (_) {
+      return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני מפלס הכינרת. אפשר לנסות שוב.', { goTo: back });
+    }
+  }
+
   // תפריט ראשי: מקש יחיד נשמר ב-Choice. לא מערבבים אותו עם מספר הרכב.
   const rawChoice = url.searchParams.get('Choice')
     ?? url.searchParams.get('ApiPhoneInput')
@@ -109,16 +123,8 @@ export default async function handler(request, res) {
     return sendYemot(res, 'נבחרה בדיקת תו נכה. עוברים להזנת מספר הרישוי.', { goTo: '82' });
   }
   if (choice === '3') {
-    try {
-      const result = await dataGov(RESOURCES.kinneret, { limit: '1', sort: 'Survey_Date desc' });
-      const record = result.records?.[0];
-      if (!record) return sendYemot(res, 'לא נמצאה מדידה עדכנית של מפלס הכינרת.', { goTo: back });
-      const level = Number(record.Kinneret_Level);
-      const levelText = Number.isFinite(level) ? formatNumber(level) : String(record.Kinneret_Level);
-      return sendYemot(res, `מפלס הכינרת במדידה מתאריך ${hebrewDate(record.Survey_Date)} הוא ${levelText} מטרים.`, { goTo: back });
-    } catch (_) {
-      return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני מפלס הכינרת. אפשר לנסות שוב.', { goTo: back });
-    }
+    // מעבר מיידי לשלוחה ייעודית שמקריאה את המפלס; אין שלב אישור.
+    return sendYemot(res, 'מפלס הכינרת.', { goTo: '83' });
   }
   return sendYemot(res, 'הבחירה לא זוהתה. ' + menuText(), { inputName: 'Choice', min: 1, max: 1 });
 }
