@@ -6,14 +6,19 @@ function sendYemot(res, text, goTo = '') {
   res.status(200).setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
 
-  // קלט אחיד: המשתמש מקיש בחירה, ואם צריך גם מספר רכב, ואז סולמית.
-  // משתמשים בתחביר wm_nav הרגיל של ימות, בלי פרמטר סולמית נוסף.
-  const inputCommand = 'wm_nav,no,1,1,10,Digits,no,no,,,1,Ok';
+  // קליטת מקשים בימות המשיח. מספרי רכב נשארים ספרות, ללא המרת T9 לאותיות.
+  const inputCommand = 'wm_nav,no,1,1,5,Digits,no,no,,,1,Ok';
   res.end(`read=${readParts(text)}=${inputCommand}${navigation}`);
 }
 
 function menuText() {
-  return 'שלום וברוכים הבאים למערכת המידע הטלפונית. לבדיקת פרטי רכב הקישו 1, לאחר מכן הקלידו את מספר הרישוי וסיימו בסולמית. לבדיקת תו נכה לרכב הקישו 2, לאחר מכן הקלידו את מספר הרישוי וסיימו בסולמית. לקבלת מפלס הכינרת העדכני הקישו 3 וסולמית. בכל שלב ניתן להתחיל מחדש באמצעות הקשה על כוכבית.';
+  return 'ברוכים הבאים למערכת המידע הטלפונית. לבדיקת פרטי רכב הקישו 1. לבדיקת תו נכה הקישו 2. לקבלת מפלס הכינרת הקישו 3. לבחירת פעולה חדשה הקישו את המספר המתאים.';
+}
+
+function platePrompt(service) {
+  return service === '2'
+    ? 'בדיקת תו נכה. אנא הקישו את מספר הרישוי וסיימו בסולמית.'
+    : 'בדיקת פרטי רכב. אנא הקישו את מספר הרישוי וסיימו בסולמית.';
 }
 
 function hebrewDate(value) {
@@ -22,18 +27,71 @@ function hebrewDate(value) {
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('he-IL');
 }
 
+function leafExtension(apiExtension) {
+  if (!apiExtension) return '';
+  const clean = String(apiExtension).split('^')[0];
+  const parts = clean.split('*').filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : clean;
+}
+
 export default async function handler(request, res) {
   const url = requestUrl(request);
-  const rawDigits = url.searchParams.get('Digits') || url.searchParams.get('plate') || '';
-  const digits = String(rawDigits).replace(/[^0-9]/g, '');
+
+  // ימות עשויה למסור את ההקשות בשם ApiPhoneInput, Digits או val.
+  // מסירים תווים שאינם ספרות לצורך בחירת שירות/מספר רכב, בלי לפענח אותם לאותיות.
+  const rawInput = url.searchParams.get('ApiPhoneInput')
+    ?? url.searchParams.get('Digits')
+    ?? url.searchParams.get('val')
+    ?? url.searchParams.get('plate')
+    ?? '';
+  const digits = String(rawInput).replace(/[^0-9]/g, '');
+  const extension = leafExtension(url.searchParams.get('ApiExtension'));
   const back = parentExtension(url.searchParams.get('ApiExtension'));
 
+  // שלוחה 1: תחילה משמיעה הנחיה; בהקשה הבאה מקבלת מספר רכב.
+  if (extension === '1') {
+    if (!digits) return sendYemot(res, platePrompt('1'));
+    if (!validatePlate(digits)) {
+      return sendYemot(res, 'מספר הרישוי לא תקין. יש להקיש מספר בן 5 עד 9 ספרות ולסיים בסולמית.', back);
+    }
+    try {
+      const records = await Promise.all(RESOURCES.vehicles.map(id => findRecord(id, digits)));
+      const record = Object.assign({}, ...records.filter(Boolean));
+      if (!Object.keys(record).length) {
+        return sendYemot(res, `לא נמצא רכב שמספרו ${digitsToHebrewWords(digits)}.`, back);
+      }
+      const details = VEHICLE_FIELDS
+        .filter(([key]) => record[key] !== null && record[key] !== undefined && String(record[key]).trim() !== '')
+        .map(([key, label]) => `${label}: ${key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key])}`)
+        .join('. ');
+      return sendYemot(res, `תוצאות בדיקת הרכב. ${details}`, back);
+    } catch (_) {
+      return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני הרכב. אפשר לנסות שוב מאוחר יותר.', back);
+    }
+  }
+
+  // שלוחה 2: שלב נפרד להזנת מספר הרכב לצורך בדיקת תו נכה.
+  if (extension === '2') {
+    if (!digits) return sendYemot(res, platePrompt('2'));
+    if (!validatePlate(digits)) {
+      return sendYemot(res, 'מספר הרישוי לא תקין. יש להקיש מספר בן 5 עד 9 ספרות ולסיים בסולמית.', back);
+    }
+    try {
+      const record = await findRecord(RESOURCES.disability, digits);
+      return sendYemot(res, record
+        ? `נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(digits)}.`
+        : `לא נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(digits)}.`, back);
+    } catch (_) {
+      return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני תו הנכה. אפשר לנסות שוב מאוחר יותר.', back);
+    }
+  }
+
+  // שלוחה ראשית: בחירת שירות בלבד, ללא צירוף מספר הרכב לאותה הקשה.
   if (!digits) return sendYemot(res, menuText(), back);
+  if (digits === '1') return sendYemot(res, platePrompt('1'), '1');
+  if (digits === '2') return sendYemot(res, platePrompt('2'), '2');
 
-  const service = digits[0];
-  const plate = digits.slice(1);
-
-  if (service === '3' && digits === '3') {
+  if (digits === '3') {
     try {
       const result = await dataGov(RESOURCES.kinneret, { limit: '1', sort: 'Survey_Date desc' });
       const record = result.records?.[0];
@@ -46,36 +104,5 @@ export default async function handler(request, res) {
     }
   }
 
-  if (service !== '1' && service !== '2') {
-    return sendYemot(res, 'לא זיהיתי את הבחירה. ' + menuText(), back);
-  }
-
-  if (!validatePlate(plate)) {
-    const instructions = service === '1'
-      ? 'לבדיקת פרטי רכב יש להקיש 1, אחריו מספר רישוי בן 5 עד 9 ספרות, ולסיים בסולמית.'
-      : 'לבדיקת תו נכה יש להקיש 2, אחריו מספר רישוי בן 5 עד 9 ספרות, ולסיים בסולמית.';
-    return sendYemot(res, instructions, back);
-  }
-
-  try {
-    if (service === '2') {
-      const record = await findRecord(RESOURCES.disability, plate);
-      return sendYemot(res, record
-        ? `נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.`
-        : `לא נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.`, back);
-    }
-
-    const records = await Promise.all(RESOURCES.vehicles.map(id => findRecord(id, plate)));
-    const record = Object.assign({}, ...records.filter(Boolean));
-    if (!Object.keys(record).length) return sendYemot(res, `לא נמצא רכב שמספרו ${digitsToHebrewWords(plate)}.`, back);
-
-    const details = VEHICLE_FIELDS
-      .filter(([key]) => record[key] !== null && record[key] !== undefined && String(record[key]).trim() !== '')
-      .map(([key, label]) => `${label}: ${key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key])}`)
-      .join('. ');
-
-    return sendYemot(res, `תוצאות הבדיקה. ${details}`, back);
-  } catch (_) {
-    return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני הרכב. אפשר לנסות שוב מאוחר יותר.', back);
-  }
+  return sendYemot(res, 'הבחירה לא זוהתה. ' + menuText(), back);
 }
