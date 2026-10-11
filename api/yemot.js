@@ -49,7 +49,7 @@ export default async function handler(request, res) {
   const back = parentExtension(url.searchParams.get('ApiExtension'));
 
   // שלוחה 1: תחילה משמיעה הנחיה; בהקשה הבאה מקבלת מספר רכב.
-  if (extension === '1') {
+  if (extension === '81') {
     if (!digits) return sendYemot(res, platePrompt('1'));
     if (!validatePlate(digits)) {
       return sendYemot(res, 'מספר הרישוי לא תקין. יש להקיש מספר בן 5 עד 9 ספרות ולסיים בסולמית.', back);
@@ -71,7 +71,7 @@ export default async function handler(request, res) {
   }
 
   // שלוחה 2: שלב נפרד להזנת מספר הרכב לצורך בדיקת תו נכה.
-  if (extension === '2') {
+  if (extension === '82') {
     if (!digits) return sendYemot(res, platePrompt('2'));
     if (!validatePlate(digits)) {
       return sendYemot(res, 'מספר הרישוי לא תקין. יש להקיש מספר בן 5 עד 9 ספרות ולסיים בסולמית.', back);
@@ -88,8 +88,8 @@ export default async function handler(request, res) {
 
   // שלוחה ראשית: בחירת שירות בלבד, ללא צירוף מספר הרכב לאותה הקשה.
   if (!digits) return sendYemot(res, menuText(), back);
-  if (digits === '1') return sendYemot(res, platePrompt('1'), '1');
-  if (digits === '2') return sendYemot(res, platePrompt('2'), '2');
+  if (digits === '1') return sendYemot(res, 'נבחרה בדיקת פרטי רכב. מעביר לשלב הזנת מספר הרישוי.', '81');
+  if (digits === '2') return sendYemot(res, 'נבחרה בדיקת תו נכה. מעביר לשלב הזנת מספר הרישוי.', '82');
 
   if (digits === '3') {
     try {
