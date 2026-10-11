@@ -5,8 +5,8 @@ function sendYemot(res, text, goTo = '') {
   const navigation = goTo ? `,go_to_folder=${goTo}` : '';
   res.status(200).setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
-  // Yemot response format: read=t-text.n-number.t-text=wm_nav,...
-  res.end(`read=${readParts(text)}=wm_nav,no,1,1,5,Digits,no,no,,,1,Ok${navigation}`);
+  // Collect up to 9 digits; # confirms the entry.
+  res.end(`read=${readParts(text)}=wm_nav,no,1,1,9,Digits,no,no,#,,1,Ok${navigation}`);
 }
 
 function getChoice(url) {
@@ -39,10 +39,17 @@ export default async function handler(request, res) {
   const choice = getChoice(url);
   const back = parentExtension(url.searchParams.get('ApiExtension'));
 
+  // A fresh menu request.
   if (!choice && !digits) return sendYemot(res, menuText(), back);
 
-  const selected = choice || (['1', '2', '3'].includes(digits) ? digits : '');
-  if (!choice && ['1', '2'].includes(digits)) return sendYemot(res, promptForChoice(digits), back);
+  // The menu key must be handled before any generic choice parameter.
+  const selected = ['1', '2', '3'].includes(digits) ? digits : choice;
+
+  // Do not navigate back to the parent after the prompt: the caller must enter
+  // the plate number and confirm it with # first.
+  if (['1', '2'].includes(selected) && (!digits || digits === selected)) {
+    return sendYemot(res, promptForChoice(selected));
+  }
 
   if (selected === '3' && (!digits || digits === '3')) {
     try {
@@ -59,8 +66,8 @@ export default async function handler(request, res) {
 
   if (selected !== '1' && selected !== '2') return sendYemot(res, 'הבחירה אינה תקינה. ' + menuText(), back);
 
-  const plate = choice ? plateFrom(request) : '';
-  if (!plate) return sendYemot(res, promptForChoice(selected), back);
+  const plate = plateFrom(request);
+  if (!plate) return sendYemot(res, promptForChoice(selected));
   if (!validatePlate(plate)) return sendYemot(res, 'מספר הרישוי שהוקלד אינו תקין. יש להקליד בין 5 ל 9 ספרות ולסיום להקיש סולמית.', back);
 
   try {
