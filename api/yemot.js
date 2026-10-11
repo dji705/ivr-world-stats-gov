@@ -32,7 +32,7 @@ function platePrompt(service) {
 function hebrewDate(value) {
   if (!value) return '';
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('he-IL');
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function leafExtension(apiExtension) {
