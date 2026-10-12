@@ -31,8 +31,8 @@ function platePrompt(service) {
 
 function dateKey(value) {
   if (!value) return '';
-  const raw = String(value).trim().replace(/\\s+/g, '');
-  const match = raw.match(/(\\d{4})-(\\d{1,2})-(\\d{1,2})/);
+  const raw = String(value).trim().replace(/\s+/g, '');
+  const match = raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (!match) return '';
   return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
 }
