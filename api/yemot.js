@@ -32,8 +32,8 @@ function platePrompt(service) {
 function dateKey(value) {
   if (!value) return '';
   // בחלק מהרשומות התאריך מגיע בפורמט "2023 -09-03T00:00:00".
-  const raw = String(value).trim().replace(/\\s+/g, '').replace(/^(\\d{4})-(\\d{2})-(\\d{2}).*$/, '$1-$2-$3');
-  const match = raw.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+  const raw = String(value).trim().replace(/\s+/g, '').replace(/^(\d{4})-(\d{2})-(\d{2}).*$/, '$1-$2-$3');
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return match ? `${match[1]}-${match[2]}-${match[3]}` : '';
 }
 
@@ -70,13 +70,13 @@ export default async function handler(request, res) {
       ?? url.searchParams.get('Digits')
       ?? url.searchParams.get('val')
       ?? '';
-    const digits = String(rawDate).replace(/\\D/g, '');
+    const digits = String(rawDate).replace(/\D/g, '');
     if (!digits) {
       return sendYemot(res, 'לחיפוש מדידה היסטורית, הקישו את התאריך בשמונה ספרות: יום, חודש, שנה. לדוגמה, לראשון בספטמבר אלפיים עשרים ושלוש הקישו אפס אחד, אפס תשע, שתיים אפס שתיים שלוש.', {
         inputName: 'ApiPhoneInput', min: 8, max: 8
       });
     }
-    if (!/^\\d{8}$/.test(digits)) {
+    if (!/^\d{8}$/.test(digits)) {
       return sendYemot(res, 'התאריך לא תקין. הקישו שמונה ספרות לפי הסדר יום, חודש, שנה.', {
         inputName: 'ApiPhoneInput', min: 8, max: 8
       });
