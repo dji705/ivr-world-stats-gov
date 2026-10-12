@@ -6,17 +6,15 @@ function sendYemot(res, text, options = {}) {
   res.status(200).setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
 
-  // כשצריך לעבור לשלוחה אחרת, לא משתמשים ב-read כי הוא ממתין להקשה נוספת.
-  // משמיעים את ההודעה ומעבירים מיד לשלוחה המבוקשת.
+  // מעבר לשלוחה: השמעת הודעה ואז מעבר מיידי.
   if (goTo) {
     res.end(`id_list_message=${readParts(text)}\ngo_to_folder=/${goTo}`);
     return;
   }
 
-  // בתפריט או בבקשת מספר רכב משתמשים ב-read כדי לקלוט קלט מהמאזין.
-  // השדה שאחרי שם המשתנה נשאר ריק כדי לא להפעיל מצב אישור שמחזיר את המתקשר לתפריט.
-  const readCommand = `read=${readParts(text)}=wm_nav,no,${min},${max},5,Digits,no,no,,,1,Ok`;
-  res.end(readCommand);
+  // תחביר read של ימות: שם משתנה הקלט חייב להופיע בתשובה,
+  // אחרת הבחירה/מספר הרכב לא נמסרים לפרמטר שהקוד קורא.
+  res.end(`read=${readParts(text)}=${inputName},,${min},${max},Digits,yes,no,*`);
 }
 
 function menuText() {
