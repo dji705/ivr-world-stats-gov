@@ -20,7 +20,7 @@ function sendYemot(res, text, options = {}) {
 }
 
 function menuText() {
-  return 'ברוכים הבאים למערכת המידע הטלפונית. לבדיקת פרטי רכב הקישו 1. לבדיקת תו נכה הקישו 2. לקבלת מפלס הכינרת הקישו 3.';
+  return 'ברוכים הבאים למערכת המידע הטלפונית. לבדיקת פרטי רכב הקישו 1. לבדיקת תו נכה הקישו 2. לקבלת מפלס הכינרת העדכני הקישו 3. לחיפוש מפלס לפי תאריך היסטורי הקישו 4.';
 }
 
 function platePrompt(service) {
@@ -29,10 +29,26 @@ function platePrompt(service) {
     : 'בדיקת פרטי רכב. אנא הקישו את מספר הרישוי, בין 5 ל 9 ספרות, ולסיום הקישו סולמית.';
 }
 
-function hebrewDate(value) {
+function dateKey(value) {
   if (!value) return '';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' });
+  // בחלק מהרשומות התאריך מגיע בפורמט "2023 -09-03T00:00:00".
+  const raw = String(value).trim().replace(/\\s+/g, '').replace(/^(\\d{4})-(\\d{2})-(\\d{2}).*$/, '$1-$2-$3');
+  const match = raw.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : '';
+}
+
+function hebrewDate(value) {
+  const key = dateKey(value);
+  if (!key) return value ? String(value) : 'תאריך לא ידוע';
+  const [year, month, day] = key.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 12));
+  return new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(date);
+}
+
+function formatKinneretRecord(record) {
+  const level = Number(record.Kinneret_Level);
+  const levelText = Number.isFinite(level) ? formatNumber(level) : String(record.Kinneret_Level ?? 'לא ידוע');
+  return `מפלס הכינרת בתאריך ${hebrewDate(record.Survey_Date)} הוא ${levelText} מטרים.`;
 }
 
 function leafExtension(apiExtension) {
@@ -46,6 +62,45 @@ export default async function handler(request, res) {
   const url = requestUrl(request);
   const extension = leafExtension(url.searchParams.get('ApiExtension'));
   const back = parentExtension(url.searchParams.get('ApiExtension'));
+
+  // שלוחה 84: חיפוש היסטורי לפי תאריך בפורמט יום-חודש-שנה, 8 ספרות.
+  if (extension === '84') {
+    const rawDate = url.searchParams.get('ApiPhoneInput')
+      ?? url.searchParams.get('DateInput')
+      ?? url.searchParams.get('Digits')
+      ?? url.searchParams.get('val')
+      ?? '';
+    const digits = String(rawDate).replace(/\\D/g, '');
+    if (!digits) {
+      return sendYemot(res, 'לחיפוש מדידה היסטורית, הקישו את התאריך בשמונה ספרות: יום, חודש, שנה. לדוגמה, לראשון בספטמבר אלפיים עשרים ושלוש הקישו אפס אחד, אפס תשע, שתיים אפס שתיים שלוש.', {
+        inputName: 'ApiPhoneInput', min: 8, max: 8
+      });
+    }
+    if (!/^\\d{8}$/.test(digits)) {
+      return sendYemot(res, 'התאריך לא תקין. הקישו שמונה ספרות לפי הסדר יום, חודש, שנה.', {
+        inputName: 'ApiPhoneInput', min: 8, max: 8
+      });
+    }
+    const day = digits.slice(0, 2);
+    const month = digits.slice(2, 4);
+    const year = digits.slice(4, 8);
+    const requestedDate = `${year}-${month}-${day}`;
+    const check = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 12));
+    if (check.getUTCFullYear() !== Number(year) || check.getUTCMonth() + 1 !== Number(month) || check.getUTCDate() !== Number(day)) {
+      return sendYemot(res, 'התאריך שהוקש אינו תאריך תקין. נסו שוב.', {
+        inputName: 'ApiPhoneInput', min: 8, max: 8
+      });
+    }
+    try {
+      const result = await dataGov(RESOURCES.kinneret, { limit: '20000', sort: 'Survey_Date desc' });
+      const record = (result.records || []).find(item => dateKey(item.Survey_Date) === requestedDate);
+      return sendYemot(res, record
+        ? formatKinneretRecord(record)
+        : `לא נמצאה מדידת מפלס כינרת בתאריך ${hebrewDate(requestedDate)}. בדקו את התאריך ונסו שוב.`, { goTo: back });
+    } catch (_) {
+      return sendYemot(res, 'לא ניתן לקבל כרגע את היסטוריית מפלס הכינרת. אפשר לנסות שוב מאוחר יותר.', { goTo: back });
+    }
+  }
 
   // שלוחות 81/82: הקריאה הראשונה מבקשת מספר רישוי. ימות מחזירה אותו
   // בפרמטר ApiPhoneInput שהוגדר בפקודת read.
@@ -109,17 +164,24 @@ export default async function handler(request, res) {
     return sendYemot(res, 'נבחרה בדיקת תו נכה. עוברים להזנת מספר הרישוי.', { goTo: '82' });
   }
   if (choice === '3') {
-    // מביאים את המפלס ומשמיעים אותו מיד באותה בקשה, בלי לעבור לשלוחה נוספת.
     try {
+      // מבקשים את הרשומה האחרונה לפי תאריך המדידה, ולא לפי תאריך היום במחשב.
       const result = await dataGov(RESOURCES.kinneret, { limit: '1', sort: 'Survey_Date desc' });
-      const record = result.records?.[0];
-      if (!record) return sendYemot(res, 'לא נמצאה מדידה עדכנית של מפלס הכינרת.', { goTo: back });
-      const level = Number(record.Kinneret_Level);
-      const levelText = Number.isFinite(level) ? formatNumber(level) : String(record.Kinneret_Level);
-      return sendYemot(res, `מפלס הכינרת במדידה מתאריך ${hebrewDate(record.Survey_Date)} הוא ${levelText} מטרים.`, { goTo: back });
+      let record = result.records?.[0];
+      if (!record || !dateKey(record.Survey_Date)) {
+        const fallback = await dataGov(RESOURCES.kinneret, { limit: '20000', sort: 'Survey_Date desc' });
+        record = (fallback.records || []).filter(item => dateKey(item.Survey_Date))
+          .sort((a, b) => dateKey(b.Survey_Date).localeCompare(dateKey(a.Survey_Date)))[0];
+      }
+      return sendYemot(res, record
+        ? formatKinneretRecord(record)
+        : 'לא נמצאה מדידה עדכנית של מפלס הכינרת.', { goTo: back });
     } catch (_) {
       return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני מפלס הכינרת. אפשר לנסות שוב.', { goTo: back });
     }
+  }
+  if (choice === '4') {
+    return sendYemot(res, 'חיפוש היסטוריית מפלס הכינרת לפי תאריך.', { goTo: '84' });
   }
   return sendYemot(res, 'הבחירה לא זוהתה. ' + menuText(), { inputName: 'Choice', min: 1, max: 1 });
 }
