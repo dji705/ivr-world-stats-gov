@@ -15,26 +15,26 @@ function sendYemot(res, text, options = {}) {
 
   // בתפריט או בבקשת מספר רכב משתמשים ב-read כדי לקלוט קלט מהמאזין.
   // השדה שאחרי שם המשתנה נשאר ריק כדי לא להפעיל מצב אישור שמחזיר את המתקשר לתפריט.
-  const readCommand = `read=${readParts(text)}=${inputName},,${min},${max},Digits,yes,no,*,`;
+  const readCommand = `read=${readParts(text)}=wm_nav,no,${min},${max},5,Digits,no,no,,,1,Ok`;
   res.end(readCommand);
 }
 
 function menuText() {
-  return 'ברוכים הבאים למערכת המידע הטלפונית. לבדיקת פרטי רכב הקישו 1. לבדיקת תו נכה הקישו 2. לקבלת מפלס הכינרת העדכני הקישו 3. לחיפוש מפלס לפי תאריך היסטורי הקישו 4.';
+  return 'מערכת מידע. לפרטי רכב הקישו 1. לבדיקת תו נכה הקישו 2. למפלס הכינרת האחרון שפורסם הקישו 3. לחיפוש מדידה לפי תאריך הקישו 4.';
 }
 
 function platePrompt(service) {
   return service === '2'
-    ? 'בדיקת תו נכה. אנא הקישו את מספר הרישוי, בין 5 ל 9 ספרות, ולסיום הקישו סולמית.'
-    : 'בדיקת פרטי רכב. אנא הקישו את מספר הרישוי, בין 5 ל 9 ספרות, ולסיום הקישו סולמית.';
+    ? 'הקישו את מספר הרכב, ולסיום סולמית.'
+    : 'הקישו את מספר הרכב, ולסיום סולמית.';
 }
 
 function dateKey(value) {
   if (!value) return '';
-  // בחלק מהרשומות התאריך מגיע בפורמט "2023 -09-03T00:00:00".
-  const raw = String(value).trim().replace(/\s+/g, '').replace(/^(\d{4})-(\d{2})-(\d{2}).*$/, '$1-$2-$3');
-  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return match ? `${match[1]}-${match[2]}-${match[3]}` : '';
+  const raw = String(value).trim().replace(/\\s+/g, '');
+  const match = raw.match(/(\\d{4})-(\\d{1,2})-(\\d{1,2})/);
+  if (!match) return '';
+  return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
 }
 
 function hebrewDate(value) {
@@ -45,10 +45,14 @@ function hebrewDate(value) {
   return new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(date);
 }
 
-function formatKinneretRecord(record) {
+function formatKinneretRecord(record, includeToday = false) {
   const level = Number(record.Kinneret_Level);
   const levelText = Number.isFinite(level) ? formatNumber(level) : String(record.Kinneret_Level ?? 'לא ידוע');
-  return `מפלס הכינרת בתאריך ${hebrewDate(record.Survey_Date)} הוא ${levelText} מטרים.`;
+  const today = new Intl.DateTimeFormat('he-IL', {
+    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jerusalem'
+  }).format(new Date());
+  const prefix = includeToday ? `היום ${today}. ` : '';
+  return `${prefix}המדידה האחרונה שפורסמה היא מתאריך ${hebrewDate(record.Survey_Date)}. מפלס הכינרת באותה מדידה הוא ${levelText} מטרים מתחת לפני הים.`;
 }
 
 function leafExtension(apiExtension) {
@@ -92,8 +96,15 @@ export default async function handler(request, res) {
       });
     }
     try {
-      const result = await dataGov(RESOURCES.kinneret, { limit: '20000', sort: 'Survey_Date desc' });
-      const record = (result.records || []).find(item => dateKey(item.Survey_Date) === requestedDate);
+      const exact = await dataGov(RESOURCES.kinneret, {
+        limit: '5',
+        filters: JSON.stringify({ Survey_Date: requestedDate + 'T00:00:00' })
+      });
+      let record = (exact.records || []).find(item => dateKey(item.Survey_Date) === requestedDate);
+      if (!record) {
+        const result = await dataGov(RESOURCES.kinneret, { limit: '1000', sort: 'Survey_Date desc' });
+        record = (result.records || []).find(item => dateKey(item.Survey_Date) === requestedDate);
+      }
       return sendYemot(res, record
         ? formatKinneretRecord(record)
         : `לא נמצאה מדידת מפלס כינרת בתאריך ${hebrewDate(requestedDate)}. בדקו את התאריך ונסו שוב.`, { goTo: back });
@@ -165,17 +176,13 @@ export default async function handler(request, res) {
   }
   if (choice === '3') {
     try {
-      // מבקשים את הרשומה האחרונה לפי תאריך המדידה, ולא לפי תאריך היום במחשב.
-      const result = await dataGov(RESOURCES.kinneret, { limit: '1', sort: 'Survey_Date desc' });
-      let record = result.records?.[0];
-      if (!record || !dateKey(record.Survey_Date)) {
-        const fallback = await dataGov(RESOURCES.kinneret, { limit: '20000', sort: 'Survey_Date desc' });
-        record = (fallback.records || []).filter(item => dateKey(item.Survey_Date))
-          .sort((a, b) => dateKey(b.Survey_Date).localeCompare(dateKey(a.Survey_Date)))[0];
-      }
+      // תאריך היום נאמר בנפרד מתאריך המדידה בפועל, כדי לא להציג נתון ישן כאילו נמדד היום.
+      const result = await dataGov(RESOURCES.kinneret, { limit: '100', sort: 'Survey_Date desc' });
+      const record = (result.records || []).filter(item => dateKey(item.Survey_Date))
+        .sort((a, b) => dateKey(b.Survey_Date).localeCompare(dateKey(a.Survey_Date)))[0];
       return sendYemot(res, record
-        ? formatKinneretRecord(record)
-        : 'לא נמצאה מדידה עדכנית של מפלס הכינרת.', { goTo: back });
+        ? formatKinneretRecord(record, true)
+        : 'לא נמצאה מדידה של מפלס הכינרת במאגר.', { goTo: back });
     } catch (_) {
       return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני מפלס הכינרת. אפשר לנסות שוב.', { goTo: back });
     }
