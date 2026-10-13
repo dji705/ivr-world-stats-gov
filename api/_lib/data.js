@@ -50,10 +50,26 @@ function plateFrom(request) {
 
 function validatePlate(plate) { return /^[0-9]{5,9}$/.test(plate); }
 
+// Short per-instance cache: reduces repeated calls to data.gov.il. Vercel may start
+// a fresh instance at any time, so this is an optimization, not a durable cache.
+const dataCache = new Map();
+const CACHE_LIMIT = 200;
+function cacheTtl(resourceId) {
+  if (resourceId === 'e83f763b-b7d7-479e-b172-ae981ddc6de5') return 60_000; // flights: 1 minute
+  if (resourceId === RESOURCES.kinneret) return 5 * 60_000; // Kinneret: 5 minutes
+  return 60_000; // plate lookups: 1 minute
+}
+
 async function dataGov(resourceId, params = {}, timeoutMs = 8000) {
   const url = new URL(DATA_API);
   url.searchParams.set('resource_id', resourceId);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+  const cacheKey = url.toString();
+  const now = Date.now();
+  const cached = dataCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) return cached.value;
+  if (cached) dataCache.delete(cacheKey);
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -61,6 +77,12 @@ async function dataGov(resourceId, params = {}, timeoutMs = 8000) {
     if (!response.ok) throw new Error(`מקור הנתונים החזיר ${response.status}`);
     const body = await response.json();
     if (!body.success || !body.result) throw new Error('תשובה לא תקינה ממקור הנתונים');
+    // Keep cache bounded so a stream of different license plates cannot grow memory forever.
+    if (dataCache.size >= CACHE_LIMIT) {
+      const firstKey = dataCache.keys().next().value;
+      if (firstKey !== undefined) dataCache.delete(firstKey);
+    }
+    dataCache.set(cacheKey, { value: body.result, expiresAt: now + cacheTtl(resourceId) });
     return body.result;
   } finally { clearTimeout(timer); }
 }
