@@ -4,10 +4,10 @@ import { formatNumber, readParts, digitsToHebrewWords } from './_lib/yemot.js';
 const FLIGHTS_RESOURCE = 'e83f763b-b7d7-479e-b172-ae981ddc6de5';
 
 function sendYemot(res, text, options = {}) {
-  const { inputName = 'Choice', min = 1, max = 1 } = options;
+  const { inputName = 'Choice', min = 1, max = 1, dtmfTimeout = '3' } = options;
   res.status(200).setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
-  res.end(`read=${readParts(text)}=${inputName},,${min},${max},Digits,yes,no,*`);
+  res.end(`read=${readParts(text)}=${inputName},,${min},${max},Digits,yes,no,*,${dtmfTimeout}`);
 }
 
 function menuText() {
@@ -119,6 +119,11 @@ async function flightsMessage(choice) {
 export default async function handler(request, res) {
   const url = requestUrl(request);
 
+  // Detect star before extracting numeric menu choices; '*' is not a digit.
+  if ([...url.searchParams.values()].some(value => String(value).includes('*'))) {
+    return sendYemot(res, menuText(), { inputName: 'Choice', min: 1, max: 1, dtmfTimeout: '2' });
+  }
+
   // קלטים ייחודיים לכל פעולה מאפשרים להישאר באותה שלוחת API,
   // ללא צורך בשלוחות פנימיות 81, 82 או 84.
   const vehicleInput = digitsParam(url, ['VehiclePlate', 'ApiPhoneInput']);
@@ -171,7 +176,7 @@ export default async function handler(request, res) {
 
   const rawChoice = digitsParam(url, ['Choice', 'ApiPhoneInput', 'Digits', 'val']);
   const choice = rawChoice.replace(/\D/g, '');
-  if (!choice) return sendYemot(res, menuText(), { inputName: 'Choice', min: 1, max: 1 });
+  if (!choice) return sendYemot(res, menuText(), { inputName: 'Choice', min: 1, max: 1, dtmfTimeout: '2' });
 
   if (choice === '1') return sendYemot(res, 'הקישו את מספר הרכב, ולסיום סולמית.', { inputName: 'VehiclePlate', min: 5, max: 9 });
   if (choice === '2') return sendYemot(res, 'הקישו את מספר הרכב לבדיקת תו נכה, ולסיום סולמית.', { inputName: 'DisabilityPlate', min: 5, max: 9 });
