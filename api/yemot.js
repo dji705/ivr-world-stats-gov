@@ -4,14 +4,14 @@ import { formatNumber, readParts, digitsToHebrewWords } from './_lib/yemot.js';
 const FLIGHTS_RESOURCE = 'e83f763b-b7d7-479e-b172-ae981ddc6de5';
 
 function sendYemot(res, text, options = {}) {
-  const { inputName = 'Choice', min = 1, max = 1, dtmfTimeout = '3' } = options;
+  const { inputName = 'Choice', min = 1, max = 1, dtmfTimeout = '7' } = options;
   res.status(200).setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
   res.end(`read=${readParts(text)}=${inputName},,${min},${max},Digits,yes,no,*,${dtmfTimeout}`);
 }
 
 function menuText() {
-  return 'מערכת מידע. לפרטי רכב הקישו 1. לבדיקת תו נכה הקישו 2. למפלס הכינרת האחרון שפורסם הקישו 3. לחיפוש מדידה לפי תאריך הקישו 4. לטיסות נוחתות הקישו 5. לטיסות ממריאות הקישו 6. לטיסות בעיכוב הקישו 7.';
+  return 'מערכת מידע. לפרטי רכב הקישו 1. לבדיקת תו נכה הקישו 2. למפלס הכינרת האחרון שפורסם הקישו 3. לחיפוש מדידה לפי תאריך הקישו 4. לטיסות נוחתות הקישו 5. לטיסות ממריאות הקישו 6. לטיסות בעיכוב הקישו 7. לחיפוש טיסה לפי מספר טיסה הקישו 8.';
 }
 function menuAgain(text) { return `${text} לתפריט הראשי, הקישו כוכבית. ${menuText()}`; }
 function digitsParam(url, names) {
@@ -129,15 +129,15 @@ export default async function handler(request, res) {
   const vehicleInput = digitsParam(url, ['VehiclePlate', 'ApiPhoneInput']);
   const disabilityInput = digitsParam(url, ['DisabilityPlate']);
   const dateInput = digitsParam(url, ['KinneretDate', 'DateInput']);
+  const flightInput = digitsParam(url, ['FlightNumber']);
 
-  if (url.searchParams.has('VehiclePlate') || url.searchParams.has('DisabilityPlate') ||
-      (url.searchParams.has('ApiPhoneInput') && !url.searchParams.has('Choice'))) {
+  if (url.searchParams.has('VehiclePlate') || url.searchParams.has('DisabilityPlate')) {
     const isDisability = url.searchParams.has('DisabilityPlate');
     const rawPlate = isDisability ? disabilityInput : vehicleInput;
     const plate = rawPlate.replace(/\D/g, '');
     const inputName = isDisability ? 'DisabilityPlate' : 'VehiclePlate';
-    if (!plate) return sendYemot(res, 'הקישו את מספר הרכב, ולסיום סולמית.', { inputName, min: 5, max: 9 });
-    if (!validatePlate(plate)) return sendYemot(res, 'מספר הרישוי לא תקין. הקישו מספר בן 5 עד 9 ספרות ונסו שוב.', { inputName, min: 5, max: 9 });
+    if (!plate) return sendYemot(res, 'הקישו את מספר הרכב, ולסיום סולמית.', { inputName, min: 1, max: 9, dtmfTimeout: '7' });
+    if (!validatePlate(plate)) return sendYemot(res, 'מספר הרישוי לא תקין. הקישו מספר בן 5 עד 9 ספרות, ולסיום סולמית.', { inputName, min: 1, max: 9, dtmfTimeout: '7' });
     try {
       if (isDisability) {
         const record = await findRecord(RESOURCES.disability, plate);
@@ -155,6 +155,23 @@ export default async function handler(request, res) {
       return sendYemot(res, menuAgain(`תוצאות בדיקת הרכב. ${details}`));
     } catch (_) {
       return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את נתוני הבדיקה. אפשר לנסות שוב מאוחר יותר.'));
+    }
+  }
+
+
+  if (url.searchParams.has('FlightNumber')) {
+    const number = flightInput.replace(/\\D/g, '');
+    if (!number) return sendYemot(res, 'הקישו את מספר הטיסה בספרות בלבד, ולסיום סולמית.', { inputName: 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
+    if (!/^\\d{1,5}$/.test(number)) return sendYemot(res, 'מספר הטיסה לא תקין. הקישו עד חמש ספרות ולסיום סולמית.', { inputName: 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
+    try {
+      const records = await getFlights();
+      const matches = records.filter(record => String(record.CHFLTN ?? '').replace(/\\D/g, '') === number)
+        .sort((a, b) => (flightTime(a.CHPTOL) ?? flightTime(a.CHSTOL) ?? 0) - (flightTime(b.CHPTOL) ?? flightTime(b.CHSTOL) ?? 0))
+        .slice(0, 3);
+      if (!matches.length) return sendYemot(res, menuAgain(`לא נמצאה טיסה מספר ${digitsToHebrewWords(number)} בלוח הטיסות הנוכחי.`));
+      return sendYemot(res, menuAgain('תוצאות חיפוש לפי מספר טיסה. ' + matches.map(record => formatFlight(record, flightDirection(record))).join(' ')));
+    } catch (_) {
+      return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את נתוני הטיסות. נסו שוב מאוחר יותר.'));
     }
   }
 
@@ -178,8 +195,8 @@ export default async function handler(request, res) {
   const choice = rawChoice.replace(/\D/g, '');
   if (!choice) return sendYemot(res, menuText(), { inputName: 'Choice', min: 1, max: 1, dtmfTimeout: '2' });
 
-  if (choice === '1') return sendYemot(res, 'הקישו את מספר הרכב, ולסיום סולמית.', { inputName: 'VehiclePlate', min: 5, max: 9 });
-  if (choice === '2') return sendYemot(res, 'הקישו את מספר הרכב לבדיקת תו נכה, ולסיום סולמית.', { inputName: 'DisabilityPlate', min: 5, max: 9 });
+  if (choice === '1') return sendYemot(res, 'הקישו את מספר הרכב, ולסיום סולמית.', { inputName: 'VehiclePlate', min: 1, max: 9, dtmfTimeout: '7' });
+  if (choice === '2') return sendYemot(res, 'הקישו את מספר הרכב לבדיקת תו נכה, ולסיום סולמית.', { inputName: 'DisabilityPlate', min: 1, max: 9, dtmfTimeout: '7' });
   if (choice === '3') {
     try {
       const result = await dataGov(RESOURCES.kinneret, { limit: '100', sort: 'Survey_Date desc' });
@@ -191,6 +208,7 @@ export default async function handler(request, res) {
     }
   }
   if (choice === '4') return sendYemot(res, 'לחיפוש מדידה היסטורית, הקישו תאריך בשמונה ספרות: יום, חודש, שנה. לדוגמה, לראשון בספטמבר אלפיים עשרים ושלוש הקישו אפס אחד, אפס תשע, שתיים אפס שתיים שלוש.', { inputName: 'KinneretDate', min: 8, max: 8 });
+  if (choice === '8') return sendYemot(res, 'הקישו את מספר הטיסה בספרות בלבד, ולסיום סולמית.', { inputName: 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
   if (choice === '5' || choice === '6' || choice === '7') {
     try { return sendYemot(res, menuAgain(await flightsMessage(choice))); }
     catch (_) { return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את נתוני הטיסות. נסו שוב מאוחר יותר.')); }
