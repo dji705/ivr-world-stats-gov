@@ -50,7 +50,7 @@ function formatKinneretRecord(record, includeToday = false) {
     day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jerusalem'
   }).format(new Date());
   const prefix = includeToday ? `היום ${today}. ` : '';
-  return `${prefix}המדידה האחרונה שפורסמה היא מתאריך ${hebrewDate(record.Survey_Date)}. מפלס הכינרת באותה מדידה הוא ${levelText} מטרים מתחת לפני הים.`;
+  return `${prefix}המדידה האחרונה שפורסמה היא מתאריך ${hebrewDate(record.Survey_Date)}. מפלס הכינרת במדידה זו עומד על ${levelText} מטרים מתחת לפני הים.`;
 }
 
 function leafExtension(apiExtension) {
