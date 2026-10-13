@@ -76,7 +76,7 @@ function delayMinutes(record) {
 function formatFlight(record, kind) {
   const number = flightNumber(record) || 'מספר טיסה לא ידוע';
   const airline = record.CHOPERD || 'חברת תעופה לא ידועה';
-  const city = record.CHLOC1T || record.CHLOC1TH || record.CHLOC1D || 'יעד לא ידוע';
+  const city = record.CHLOC1TH || record.CHLOC1T || record.CHLOC1D || 'יעד לא ידוע';
   const country = record.CHLOC1CH ? `, ${record.CHLOC1CH}` : '';
   const status = record.CHRMINH ? `. סטטוס: ${record.CHRMINH}` : '';
   if (kind === 'A') {
