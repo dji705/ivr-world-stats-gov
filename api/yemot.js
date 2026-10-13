@@ -1,192 +1,194 @@
 import { RESOURCES, VEHICLE_FIELDS, requestUrl, validatePlate, findRecord, dataGov } from './_lib/data.js';
-import { formatNumber, parentExtension, readParts, digitsToHebrewWords } from './_lib/yemot.js';
+import { formatNumber, readParts, digitsToHebrewWords } from './_lib/yemot.js';
+
+const FLIGHTS_RESOURCE = 'e83f763b-b7d7-479e-b172-ae981ddc6de5';
 
 function sendYemot(res, text, options = {}) {
-  const { goTo = '', inputName = 'Choice', min = 1, max = 1 } = options;
+  const { inputName = 'Choice', min = 1, max = 1 } = options;
   res.status(200).setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
-
-  // מעבר לשלוחה: השמעת הודעה ואז מעבר מיידי.
-  if (goTo) {
-    res.end(`id_list_message=${readParts(text)}\ngo_to_folder=/${goTo}`);
-    return;
-  }
-
-  // תחביר read של ימות: שם משתנה הקלט חייב להופיע בתשובה,
-  // אחרת הבחירה/מספר הרכב לא נמסרים לפרמטר שהקוד קורא.
   res.end(`read=${readParts(text)}=${inputName},,${min},${max},Digits,yes,no,*`);
 }
 
 function menuText() {
-  return 'מערכת מידע. לפרטי רכב הקישו 1. לבדיקת תו נכה הקישו 2. למפלס הכינרת האחרון שפורסם הקישו 3. לחיפוש מדידה לפי תאריך הקישו 4.';
+  return 'מערכת מידע. לפרטי רכב הקישו 1. לבדיקת תו נכה הקישו 2. למפלס הכינרת האחרון שפורסם הקישו 3. לחיפוש מדידה לפי תאריך הקישו 4. לטיסות נוחתות הקישו 5. לטיסות ממריאות הקישו 6. לטיסות בעיכוב הקישו 7.';
 }
-
-function platePrompt(service) {
-  return service === '2'
-    ? 'הקישו את מספר הרכב, ולסיום סולמית.'
-    : 'הקישו את מספר הרכב, ולסיום סולמית.';
+function menuAgain(text) { return `${text} לתפריט הראשי, הקישו כוכבית. ${menuText()}`; }
+function digitsParam(url, names) {
+  for (const name of names) {
+    const value = url.searchParams.get(name);
+    if (value !== null && value !== '') return String(value);
+  }
+  return '';
 }
-
 function dateKey(value) {
   if (!value) return '';
-  const raw = String(value).trim().replace(/\s+/g, '');
-  const match = raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (!match) return '';
-  return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+  const match = String(value).trim().match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  return match ? `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}` : '';
 }
-
 function hebrewDate(value) {
   const key = dateKey(value);
   if (!key) return value ? String(value) : 'תאריך לא ידוע';
   const [year, month, day] = key.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day, 12));
-  return new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(date);
+  return new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+    .format(new Date(Date.UTC(year, month - 1, day, 12)));
 }
-
 function formatKinneretRecord(record, includeToday = false) {
   const level = Number(record.Kinneret_Level);
   const levelText = Number.isFinite(level) ? formatNumber(level) : String(record.Kinneret_Level ?? 'לא ידוע');
-  const today = new Intl.DateTimeFormat('he-IL', {
-    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jerusalem'
-  }).format(new Date());
-  const prefix = includeToday ? `היום ${today}. ` : '';
-  return `${prefix}המדידה האחרונה שפורסמה היא מתאריך ${hebrewDate(record.Survey_Date)}. מפלס הכינרת במדידה זו עומד על ${levelText} מטרים מתחת לפני הים.`;
+  const today = new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jerusalem' }).format(new Date());
+  return `${includeToday ? `היום ${today}. ` : ''}המדידה האחרונה שפורסמה היא מתאריך ${hebrewDate(record.Survey_Date)}. מפלס הכינרת במדידה זו עומד על ${levelText} מטרים מתחת לפני הים.`;
 }
-
-function leafExtension(apiExtension) {
-  if (!apiExtension) return '';
-  const clean = String(apiExtension).split('^')[0];
-  const parts = clean.split('*').filter(Boolean);
-  return parts.length ? parts[parts.length - 1] : clean;
+function parseDateInput(raw) {
+  const digits = String(raw).replace(/\D/g, '');
+  if (!/^\d{8}$/.test(digits)) return null;
+  const day = Number(digits.slice(0, 2)), month = Number(digits.slice(2, 4)), year = Number(digits.slice(4, 8));
+  const date = new Date(Date.UTC(year, month - 1, day, 12));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() + 1 !== month || date.getUTCDate() !== day) return null;
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+function flightTime(value) {
+  const time = Date.parse(value);
+  return Number.isFinite(time) ? time : null;
+}
+function clockTime(value) {
+  const time = flightTime(value);
+  if (time === null) return 'שעה לא ידועה';
+  return new Intl.DateTimeFormat('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }).format(new Date(time));
+}
+function flightNumber(record) {
+  return [record.CHOPER, record.CHFLTN].filter(Boolean).join(' ');
+}
+function flightDirection(record) {
+  const value = String(record.CHAORD || '').toUpperCase();
+  if (value === 'A' || value === 'ARRIVAL') return 'A';
+  if (value === 'D' || value === 'DEPARTURE') return 'D';
+  return '';
+}
+function isFinalStatus(record) {
+  return /LANDED|DEPARTED|CANCELED|CANCELLED|נחתה|נחת|המריאה|בוטלה|מבוטלת/i.test(String(record.CHRMINE || '') + ' ' + String(record.CHRMINH || ''));
+}
+function delayMinutes(record) {
+  const planned = flightTime(record.CHSTOL), estimated = flightTime(record.CHPTOL);
+  if (planned === null || estimated === null) return null;
+  return Math.round((estimated - planned) / 60000);
+}
+function formatFlight(record, kind) {
+  const number = flightNumber(record) || 'מספר טיסה לא ידוע';
+  const airline = record.CHOPERD || 'חברת תעופה לא ידועה';
+  const city = record.CHLOC1T || record.CHLOC1TH || record.CHLOC1D || 'יעד לא ידוע';
+  const country = record.CHLOC1CH ? `, ${record.CHLOC1CH}` : '';
+  const status = record.CHRMINH ? `. סטטוס: ${record.CHRMINH}` : '';
+  if (kind === 'A') {
+    return `טיסה ${number}, ${airline}, מגיעה מ${city}${country}. נחיתה מתוכננת ${clockTime(record.CHSTOL)}, נחיתה משוערת ${clockTime(record.CHPTOL)}. טרמינל ${record.CHTERM || 'לא צוין'}${status}.`;
+  }
+  return `טיסה ${number}, ${airline}, ליעד ${city}${country}. המראה מתוכננת ${clockTime(record.CHSTOL)}, המראה משוערת ${clockTime(record.CHPTOL)}. טרמינל ${record.CHTERM || 'לא צוין'}${record.CHCINT ? `. דלפקים ${record.CHCINT}` : ''}${status}.`;
+}
+async function getFlights() {
+  const result = await dataGov(FLIGHTS_RESOURCE, { limit: '1000', sort: 'CHSTOL asc' });
+  return (result.records || []).filter(record => flightDirection(record));
+}
+async function flightsMessage(choice) {
+  const records = await getFlights();
+  const now = Date.now();
+  if (choice === '5' || choice === '6') {
+    const direction = choice === '5' ? 'A' : 'D';
+    const label = direction === 'A' ? 'טיסות נוחתות' : 'טיסות ממריאות';
+    const upcoming = records
+      .filter(record => flightDirection(record) === direction && !isFinalStatus(record))
+      .filter(record => {
+        const t = flightTime(record.CHPTOL) ?? flightTime(record.CHSTOL);
+        return t !== null && t >= now - 30 * 60000 && t <= now + 36 * 3600000;
+      })
+      .sort((a, b) => (flightTime(a.CHPTOL) ?? flightTime(a.CHSTOL)) - (flightTime(b.CHPTOL) ?? flightTime(b.CHSTOL)))
+      .slice(0, 5);
+    if (!upcoming.length) return `לא נמצאו כרגע ${label} עתידיות במאגר.`;
+    return `${label}. ${upcoming.map(record => formatFlight(record, direction)).join(' ')}`;
+  }
+  const delayed = records
+    .map(record => ({ record, delay: delayMinutes(record), direction: flightDirection(record), t: flightTime(record.CHPTOL) ?? flightTime(record.CHSTOL) }))
+    .filter(item => item.direction && item.delay !== null && item.delay >= 15 && item.t !== null && item.t >= now - 30 * 60000 && item.t <= now + 36 * 3600000 && !isFinalStatus(item.record))
+    .sort((a, b) => b.delay - a.delay)
+    .slice(0, 8);
+  if (!delayed.length) return 'לא נמצאו כרגע טיסות פעילות עם עיכוב של רבע שעה ומעלה לפי השעות במאגר.';
+  return 'טיסות בעיכוב. ' + delayed.map(({ record, delay, direction }) =>
+    `${formatFlight(record, direction)} העיכוב לפי השעות במאגר הוא ${delay} דקות.`
+  ).join(' ');
 }
 
 export default async function handler(request, res) {
   const url = requestUrl(request);
-  const extension = leafExtension(url.searchParams.get('ApiExtension'));
-  const back = parentExtension(url.searchParams.get('ApiExtension'));
 
-  // שלוחה 84: חיפוש היסטורי לפי תאריך בפורמט יום-חודש-שנה, 8 ספרות.
-  if (extension === '84') {
-    const rawDate = url.searchParams.get('ApiPhoneInput')
-      ?? url.searchParams.get('DateInput')
-      ?? url.searchParams.get('Digits')
-      ?? url.searchParams.get('val')
-      ?? '';
-    const digits = String(rawDate).replace(/\D/g, '');
-    if (!digits) {
-      return sendYemot(res, 'לחיפוש מדידה היסטורית, הקישו את התאריך בשמונה ספרות: יום, חודש, שנה. לדוגמה, לראשון בספטמבר אלפיים עשרים ושלוש הקישו אפס אחד, אפס תשע, שתיים אפס שתיים שלוש.', {
-        inputName: 'ApiPhoneInput', min: 8, max: 8
-      });
-    }
-    if (!/^\d{8}$/.test(digits)) {
-      return sendYemot(res, 'התאריך לא תקין. הקישו שמונה ספרות לפי הסדר יום, חודש, שנה.', {
-        inputName: 'ApiPhoneInput', min: 8, max: 8
-      });
-    }
-    const day = digits.slice(0, 2);
-    const month = digits.slice(2, 4);
-    const year = digits.slice(4, 8);
-    const requestedDate = `${year}-${month}-${day}`;
-    const check = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 12));
-    if (check.getUTCFullYear() !== Number(year) || check.getUTCMonth() + 1 !== Number(month) || check.getUTCDate() !== Number(day)) {
-      return sendYemot(res, 'התאריך שהוקש אינו תאריך תקין. נסו שוב.', {
-        inputName: 'ApiPhoneInput', min: 8, max: 8
-      });
-    }
+  // קלטים ייחודיים לכל פעולה מאפשרים להישאר באותה שלוחת API,
+  // ללא צורך בשלוחות פנימיות 81, 82 או 84.
+  const vehicleInput = digitsParam(url, ['VehiclePlate', 'ApiPhoneInput']);
+  const disabilityInput = digitsParam(url, ['DisabilityPlate']);
+  const dateInput = digitsParam(url, ['KinneretDate', 'DateInput']);
+
+  if (url.searchParams.has('VehiclePlate') || url.searchParams.has('DisabilityPlate') ||
+      (url.searchParams.has('ApiPhoneInput') && !url.searchParams.has('Choice'))) {
+    const isDisability = url.searchParams.has('DisabilityPlate');
+    const rawPlate = isDisability ? disabilityInput : vehicleInput;
+    const plate = rawPlate.replace(/\D/g, '');
+    const inputName = isDisability ? 'DisabilityPlate' : 'VehiclePlate';
+    if (!plate) return sendYemot(res, 'הקישו את מספר הרכב, ולסיום סולמית.', { inputName, min: 5, max: 9 });
+    if (!validatePlate(plate)) return sendYemot(res, 'מספר הרישוי לא תקין. הקישו מספר בן 5 עד 9 ספרות ונסו שוב.', { inputName, min: 5, max: 9 });
     try {
-      const exact = await dataGov(RESOURCES.kinneret, {
-        limit: '5',
-        filters: JSON.stringify({ Survey_Date: requestedDate + 'T00:00:00' })
-      });
+      if (isDisability) {
+        const record = await findRecord(RESOURCES.disability, plate);
+        return sendYemot(res, menuAgain(record
+          ? `נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.`
+          : `לא נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.`));
+      }
+      const found = await Promise.all(RESOURCES.vehicles.map(id => findRecord(id, plate)));
+      const record = Object.assign({}, ...found.filter(Boolean));
+      if (!Object.keys(record).length) return sendYemot(res, menuAgain(`לא נמצא רכב שמספרו ${digitsToHebrewWords(plate)}.`));
+      const details = VEHICLE_FIELDS
+        .filter(([key]) => record[key] !== null && record[key] !== undefined && String(record[key]).trim() !== '')
+        .map(([key, label]) => `${label}: ${key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key])}`)
+        .join('. ');
+      return sendYemot(res, menuAgain(`תוצאות בדיקת הרכב. ${details}`));
+    } catch (_) {
+      return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את נתוני הבדיקה. אפשר לנסות שוב מאוחר יותר.'));
+    }
+  }
+
+  if (url.searchParams.has('KinneretDate') || url.searchParams.has('DateInput')) {
+    const requestedDate = parseDateInput(dateInput);
+    if (!requestedDate) return sendYemot(res, 'התאריך לא תקין. הקישו שמונה ספרות לפי הסדר יום, חודש, שנה.', { inputName: 'KinneretDate', min: 8, max: 8 });
+    try {
+      const exact = await dataGov(RESOURCES.kinneret, { limit: '5', filters: JSON.stringify({ Survey_Date: requestedDate + 'T00:00:00' }) });
       let record = (exact.records || []).find(item => dateKey(item.Survey_Date) === requestedDate);
       if (!record) {
         const result = await dataGov(RESOURCES.kinneret, { limit: '1000', sort: 'Survey_Date desc' });
         record = (result.records || []).find(item => dateKey(item.Survey_Date) === requestedDate);
       }
-      return sendYemot(res, record
-        ? formatKinneretRecord(record)
-        : `לא נמצאה מדידת מפלס כינרת בתאריך ${hebrewDate(requestedDate)}. בדקו את התאריך ונסו שוב.`, { goTo: back });
+      return sendYemot(res, menuAgain(record ? formatKinneretRecord(record) : `לא נמצאה מדידת מפלס כינרת בתאריך ${hebrewDate(requestedDate)}.`));
     } catch (_) {
-      return sendYemot(res, 'לא ניתן לקבל כרגע את היסטוריית מפלס הכינרת. אפשר לנסות שוב מאוחר יותר.', { goTo: back });
+      return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את היסטוריית מפלס הכינרת. אפשר לנסות שוב מאוחר יותר.'));
     }
   }
 
-  // שלוחות 81/82: הקריאה הראשונה מבקשת מספר רישוי. ימות מחזירה אותו
-  // בפרמטר ApiPhoneInput שהוגדר בפקודת read.
-  if (extension === '81' || extension === '82') {
-    const rawPlate = url.searchParams.get('ApiPhoneInput')
-      ?? url.searchParams.get('plate')
-      ?? url.searchParams.get('Digits')
-      ?? url.searchParams.get('val')
-      ?? '';
-    const plate = String(rawPlate).replace(/[^0-9]/g, '');
+  const rawChoice = digitsParam(url, ['Choice', 'ApiPhoneInput', 'Digits', 'val']);
+  const choice = rawChoice.replace(/\D/g, '');
+  if (!choice) return sendYemot(res, menuText(), { inputName: 'Choice', min: 1, max: 1 });
 
-    if (!plate) {
-      return sendYemot(res, platePrompt(extension === '82' ? '2' : '1'), {
-        inputName: 'ApiPhoneInput', min: 5, max: 9
-      });
-    }
-    if (!validatePlate(plate)) {
-      return sendYemot(res, 'מספר הרישוי לא תקין. הקישו מספר בן 5 עד 9 ספרות ונסו שוב.', {
-        inputName: 'ApiPhoneInput', min: 5, max: 9
-      });
-    }
-
-    try {
-      if (extension === '82') {
-        const record = await findRecord(RESOURCES.disability, plate);
-        return sendYemot(res, record
-          ? `נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.`
-          : `לא נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.`, { goTo: back });
-      }
-
-      const records = await Promise.all(RESOURCES.vehicles.map(id => findRecord(id, plate)));
-      const record = Object.assign({}, ...records.filter(Boolean));
-      if (!Object.keys(record).length) {
-        return sendYemot(res, `לא נמצא רכב שמספרו ${digitsToHebrewWords(plate)}.`, { goTo: back });
-      }
-      const details = VEHICLE_FIELDS
-        .filter(([key]) => record[key] !== null && record[key] !== undefined && String(record[key]).trim() !== '')
-        .map(([key, label]) => `${label}: ${key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key])}`)
-        .join('. ');
-      return sendYemot(res, `תוצאות בדיקת הרכב. ${details}`, { goTo: back });
-    } catch (_) {
-      return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני הבדיקה. אפשר לנסות שוב מאוחר יותר.', { goTo: back });
-    }
-  }
-
-  // תפריט ראשי: מקש יחיד נשמר ב-Choice. לא מערבבים אותו עם מספר הרכב.
-  const rawChoice = url.searchParams.get('Choice')
-    ?? url.searchParams.get('ApiPhoneInput')
-    ?? url.searchParams.get('Digits')
-    ?? url.searchParams.get('val')
-    ?? '';
-  const choice = String(rawChoice).replace(/[^0-9]/g, '');
-
-  if (!choice) {
-    return sendYemot(res, menuText(), { inputName: 'Choice', min: 1, max: 1 });
-  }
-  if (choice === '1') {
-    return sendYemot(res, 'נבחרה בדיקת פרטי רכב. עוברים להזנת מספר הרישוי.', { goTo: '81' });
-  }
-  if (choice === '2') {
-    return sendYemot(res, 'נבחרה בדיקת תו נכה. עוברים להזנת מספר הרישוי.', { goTo: '82' });
-  }
+  if (choice === '1') return sendYemot(res, 'הקישו את מספר הרכב, ולסיום סולמית.', { inputName: 'VehiclePlate', min: 5, max: 9 });
+  if (choice === '2') return sendYemot(res, 'הקישו את מספר הרכב לבדיקת תו נכה, ולסיום סולמית.', { inputName: 'DisabilityPlate', min: 5, max: 9 });
   if (choice === '3') {
     try {
-      // תאריך היום נאמר בנפרד מתאריך המדידה בפועל, כדי לא להציג נתון ישן כאילו נמדד היום.
       const result = await dataGov(RESOURCES.kinneret, { limit: '100', sort: 'Survey_Date desc' });
       const record = (result.records || []).filter(item => dateKey(item.Survey_Date))
         .sort((a, b) => dateKey(b.Survey_Date).localeCompare(dateKey(a.Survey_Date)))[0];
-      return sendYemot(res, record
-        ? formatKinneretRecord(record, true)
-        : 'לא נמצאה מדידה של מפלס הכינרת במאגר.', { goTo: back });
+      return sendYemot(res, menuAgain(record ? formatKinneretRecord(record, true) : 'לא נמצאה מדידה של מפלס הכינרת במאגר.'));
     } catch (_) {
-      return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני מפלס הכינרת. אפשר לנסות שוב.', { goTo: back });
+      return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את נתוני מפלס הכינרת. אפשר לנסות שוב.'));
     }
   }
-  if (choice === '4') {
-    return sendYemot(res, 'חיפוש היסטוריית מפלס הכינרת לפי תאריך.', { goTo: '84' });
+  if (choice === '4') return sendYemot(res, 'לחיפוש מדידה היסטורית, הקישו תאריך בשמונה ספרות: יום, חודש, שנה. לדוגמה, לראשון בספטמבר אלפיים עשרים ושלוש הקישו אפס אחד, אפס תשע, שתיים אפס שתיים שלוש.', { inputName: 'KinneretDate', min: 8, max: 8 });
+  if (choice === '5' || choice === '6' || choice === '7') {
+    try { return sendYemot(res, menuAgain(await flightsMessage(choice))); }
+    catch (_) { return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את נתוני הטיסות. נסו שוב מאוחר יותר.')); }
   }
   return sendYemot(res, 'הבחירה לא זוהתה. ' + menuText(), { inputName: 'Choice', min: 1, max: 1 });
 }
