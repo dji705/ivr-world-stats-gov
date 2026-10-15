@@ -136,8 +136,8 @@ export default async function handler(request, res) {
     const rawPlate = isDisability ? disabilityInput : vehicleInput;
     const plate = rawPlate.replace(/\D/g, '');
     const inputName = isDisability ? 'DisabilityPlate' : 'VehiclePlate';
-    if (!plate) return sendYemot(res, 'הקישו את מספר הרכב, ולסיום סולמית.', { inputName, min: 1, max: 9, dtmfTimeout: '7' });
-    if (!validatePlate(plate)) return sendYemot(res, 'מספר הרישוי לא תקין. הקישו מספר בן 5 עד 9 ספרות, ולסיום סולמית.', { inputName, min: 1, max: 9, dtmfTimeout: '7' });
+    if (!plate) return sendYemot(res, 'הקישו את מספר הרכב, ולסיום סולמית.', { inputName, min: 7, max: 8, dtmfTimeout: '7' });
+    if (!validatePlate(plate)) return sendYemot(res, 'מספר הרישוי לא תקין. הקישו 7 או 8 ספרות. במספר בן 7 ספרות סיימו בסולמית; במספר בן 8 ספרות האישור יתקבל אוטומטית.', { inputName, min: 7, max: 8, dtmfTimeout: '7' });
     try {
       if (isDisability) {
         const record = await findRecord(RESOURCES.disability, plate);
@@ -195,8 +195,8 @@ export default async function handler(request, res) {
   const choice = rawChoice.replace(/\D/g, '');
   if (!choice) return sendYemot(res, menuText(), { inputName: 'Choice', min: 1, max: 1, dtmfTimeout: '2' });
 
-  if (choice === '1') return sendYemot(res, 'הקישו את מספר הרכב, ולסיום סולמית.', { inputName: 'VehiclePlate', min: 1, max: 9, dtmfTimeout: '7' });
-  if (choice === '2') return sendYemot(res, 'הקישו את מספר הרכב לבדיקת תו נכה, ולסיום סולמית.', { inputName: 'DisabilityPlate', min: 1, max: 9, dtmfTimeout: '7' });
+  if (choice === '1') return sendYemot(res, 'הקישו את מספר הרכב, ולסיום סולמית.', { inputName: 'VehiclePlate', min: 7, max: 8, dtmfTimeout: '7' });
+  if (choice === '2') return sendYemot(res, 'הקישו את מספר הרכב לבדיקת תו נכה, ולסיום סולמית.', { inputName: 'DisabilityPlate', min: 7, max: 8, dtmfTimeout: '7' });
   if (choice === '3') {
     try {
       const result = await dataGov(RESOURCES.kinneret, { limit: '100', sort: 'Survey_Date desc' });
