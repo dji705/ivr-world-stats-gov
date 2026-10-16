@@ -192,7 +192,18 @@ export default async function handler(request, res) {
   }
 
   const rawChoice = digitsParam(url, ['Choice', 'ApiPhoneInput', 'Digits', 'val']);
-  const choice = rawChoice.replace(/\D/g, '');
+  const branchChoices = {
+    vehicle: '1',
+    disability: '2',
+    kinneret: '3',
+    'kinneret-history': '4',
+    arrivals: '5',
+    departures: '6',
+    delays: '7',
+    'flight-search': '8',
+  };
+  const branch = String(url.searchParams.get('branch') || '').toLowerCase();
+  const choice = rawChoice.replace(/\D/g, '') || branchChoices[branch] || '';
   if (!choice) return sendYemot(res, menuText(), { inputName: 'Choice', min: 1, max: 1, dtmfTimeout: '2' });
 
   if (choice === '1') return sendYemot(res, 'הקישו את מספר הרכב, ולסיום סולמית.', { inputName: 'VehiclePlate', min: 7, max: 8, dtmfTimeout: '7' });
