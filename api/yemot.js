@@ -130,7 +130,7 @@ export default async function handler(request, res) {
   // ללא צורך בשלוחות פנימיות 81, 82 או 84.
   const vehicleInput = digitsParam(url, ['VehiclePlate', 'ApiPhoneInput']);
   const disabilityInput = digitsParam(url, ['DisabilityPlate', 'ApiPhoneInput']);
-  const dateInput = digitsParam(url, ['KinneretDate', 'DateInput']);
+  const dateInput = digitsParam(url, ['KinneretDate', 'DateInput', 'ApiPhoneInput']);
   const flightInput = digitsParam(url, ['FlightNumber', 'ApiPhoneInput']);
   const activeBranch = String(url.searchParams.get('branch') || '').toLowerCase();
 
@@ -178,9 +178,9 @@ export default async function handler(request, res) {
     }
   }
 
-  if (url.searchParams.has('KinneretDate') || url.searchParams.has('DateInput')) {
+  if (url.searchParams.has('KinneretDate') || url.searchParams.has('DateInput') || (activeBranch === 'kinneret-date' && url.searchParams.has('ApiPhoneInput'))) {
     const requestedDate = parseDateInput(dateInput);
-    if (!requestedDate) return sendYemot(res, 'התאריך לא תקין. הקישו שמונה ספרות לפי הסדר יום, חודש, שנה.', { inputName: 'KinneretDate', min: 8, max: 8 });
+    if (!requestedDate) return sendYemot(res, 'התאריך לא תקין. הקישו שמונה ספרות לפי הסדר יום, חודש, שנה, ולסיום סולמית.', { inputName: activeBranch === 'kinneret-date' ? 'ApiPhoneInput' : 'KinneretDate', min: 8, max: 8, dtmfTimeout: '7' });
     try {
       const exact = await dataGov(RESOURCES.kinneret, { limit: '5', filters: JSON.stringify({ Survey_Date: requestedDate + 'T00:00:00' }) });
       let record = (exact.records || []).find(item => dateKey(item.Survey_Date) === requestedDate);
@@ -200,6 +200,7 @@ export default async function handler(request, res) {
     disability: '2',
     kinneret: '3',
     'kinneret-history': '4',
+    'kinneret-date': '4',
     arrivals: '5',
     departures: '6',
     delays: '7',
@@ -221,7 +222,7 @@ export default async function handler(request, res) {
       return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את נתוני מפלס הכינרת. אפשר לנסות שוב.'));
     }
   }
-  if (choice === '4') return sendYemot(res, 'לחיפוש מדידה היסטורית, הקישו תאריך בשמונה ספרות: יום, חודש, שנה. לסיום הקישו סולמית.', { inputName: 'KinneretDate', min: 8, max: 8, dtmfTimeout: '7' });
+  if (choice === '4') return sendYemot(res, 'לחיפוש מדידה היסטורית, הקישו תאריך בשמונה ספרות: יום, חודש, שנה. לסיום הקישו סולמית.', { inputName: branch === 'kinneret-date' ? 'ApiPhoneInput' : 'KinneretDate', min: 8, max: 8, dtmfTimeout: '7' });
   if (choice === '8') return sendYemot(res, 'הקישו את מספר הטיסה, ספרה אחת עד חמש ספרות, ולסיום הקישו סולמית.', { inputName: branch === 'flight-search' ? 'ApiPhoneInput' : 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
   if (choice === '5' || choice === '6' || choice === '7') {
     try { return sendYemot(res, menuAgain(await flightsMessage(choice))); }
