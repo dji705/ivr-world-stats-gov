@@ -87,8 +87,8 @@ async function dataGov(resourceId, params = {}, timeoutMs = 8000) {
   } finally { clearTimeout(timer); }
 }
 
-async function findRecord(resourceId, plate) {
-  const result = await dataGov(resourceId, { limit: '1', filters: JSON.stringify({ mispar_rechev: Number(plate) }) });
+async function findRecord(resourceId, plate, fieldName = 'mispar_rechev') {
+  const result = await dataGov(resourceId, { limit: '1', filters: JSON.stringify({ [fieldName]: Number(plate) }) });
   return result.records?.[0] || null;
 }
 
