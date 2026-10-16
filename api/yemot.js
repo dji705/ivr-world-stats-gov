@@ -4,7 +4,7 @@ import { formatNumber, readParts, digitsToHebrewWords } from './_lib/yemot.js';
 const FLIGHTS_RESOURCE = 'e83f763b-b7d7-479e-b172-ae981ddc6de5';
 
 function sendYemot(res, text, options = {}) {
-  const { inputName = 'Choice', min = 1, max = 1, dtmfTimeout = '5' } = options;
+  const { inputName = 'wm_nav', min = 1, max = 1, dtmfTimeout = '5' } = options;
   res.status(200).setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
   // Yemot read format: variable, clear-old-value, min, max, timeout, input-type, ...
@@ -123,7 +123,7 @@ export default async function handler(request, res) {
 
   // Detect star before extracting numeric menu choices; '*' is not a digit.
   if ([...url.searchParams.values()].some(value => String(value).includes('*'))) {
-    return sendYemot(res, menuText(), { inputName: 'Choice', min: 1, max: 1, dtmfTimeout: '2' });
+    return sendYemot(res, menuText(), { inputName: 'wm_nav', min: 1, max: 1, dtmfTimeout: '2' });
   }
 
   // קלטים ייחודיים לכל פעולה מאפשרים להישאר באותה שלוחת API,
@@ -193,7 +193,7 @@ export default async function handler(request, res) {
     }
   }
 
-  const rawChoice = digitsParam(url, ['Choice', 'ApiPhoneInput', 'Digits', 'val']);
+  const rawChoice = digitsParam(url, ['wm_nav', 'Choice', 'ApiPhoneInput', 'Digits', 'val']);
   const branchChoices = {
     vehicle: '1',
     disability: '2',
@@ -206,7 +206,7 @@ export default async function handler(request, res) {
   };
   const branch = String(url.searchParams.get('branch') || '').toLowerCase();
   const choice = rawChoice.replace(/\D/g, '') || branchChoices[branch] || '';
-  if (!choice) return sendYemot(res, menuText(), { inputName: 'Choice', min: 1, max: 1, dtmfTimeout: '2' });
+  if (!choice) return sendYemot(res, menuText(), { inputName: 'wm_nav', min: 1, max: 1, dtmfTimeout: '2' });
 
   if (choice === '1') return sendYemot(res, 'הקישו את מספר הרכב, ולסיום סולמית.', { inputName: 'VehiclePlate', min: 7, max: 8, dtmfTimeout: '7' });
   if (choice === '2') return sendYemot(res, 'הקישו את מספר הרכב לבדיקת תו נכה, מספר בן 5 עד 9 ספרות, ולסיום סולמית.', { inputName: 'DisabilityPlate', min: 5, max: 9, dtmfTimeout: '7' });
@@ -226,5 +226,5 @@ export default async function handler(request, res) {
     try { return sendYemot(res, menuAgain(await flightsMessage(choice))); }
     catch (_) { return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את נתוני הטיסות. נסו שוב מאוחר יותר.')); }
   }
-  return sendYemot(res, 'הבחירה לא זוהתה. ' + menuText(), { inputName: 'Choice', min: 1, max: 1 });
+  return sendYemot(res, 'הבחירה לא זוהתה. ' + menuText(), { inputName: 'wm_nav', min: 1, max: 1 });
 }
