@@ -1,5 +1,23 @@
 {
   "functions": {
     "api/**/*.js": { "maxDuration": 10 }
-  }
+  },
+  "rewrites": [
+    { "source": "/vehicle", "destination": "/vehicle/index.html" },
+    { "source": "/vehicle/", "destination": "/vehicle/index.html" },
+    { "source": "/disability-badge", "destination": "/disability-badge/index.html" },
+    { "source": "/disability-badge/", "destination": "/disability-badge/index.html" },
+    { "source": "/kinneret", "destination": "/kinneret/index.html" },
+    { "source": "/kinneret/", "destination": "/kinneret/index.html" },
+    { "source": "/kinneret-history", "destination": "/kinneret-history/index.html" },
+    { "source": "/kinneret-history/", "destination": "/kinneret-history/index.html" },
+    { "source": "/arrivals", "destination": "/arrivals/index.html" },
+    { "source": "/arrivals/", "destination": "/arrivals/index.html" },
+    { "source": "/departures", "destination": "/departures/index.html" },
+    { "source": "/departures/", "destination": "/departures/index.html" },
+    { "source": "/delays", "destination": "/delays/index.html" },
+    { "source": "/delays/", "destination": "/delays/index.html" },
+    { "source": "/flight-search", "destination": "/flight-search/index.html" },
+    { "source": "/flight-search/", "destination": "/flight-search/index.html" }
+  ]
 }
