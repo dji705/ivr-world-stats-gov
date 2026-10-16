@@ -205,7 +205,7 @@ export default async function handler(request, res) {
     'flight-search': '8',
   };
   const branch = String(url.searchParams.get('branch') || '').toLowerCase();
-  const choice = rawChoice.replace(/\D/g, '') || branchChoices[branch] || '';
+  const choice = branchChoices[branch] || rawChoice.replace(/\D/g, '') || '';
   if (!choice) return sendYemot(res, menuText(), { inputName: 'wm_nav', min: 1, max: 1, dtmfTimeout: '2' });
 
   if (choice === '1') return sendYemot(res, 'הקישו את מספר הרכב, בן 7 ספרות, ולסיום סולמית.', { inputName: 'VehiclePlate', min: 7, max: 7, dtmfTimeout: '7' });
