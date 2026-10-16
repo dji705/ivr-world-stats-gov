@@ -160,12 +160,12 @@ export default async function handler(request, res) {
 
 
   if (url.searchParams.has('FlightNumber')) {
-    const number = flightInput.replace(/\\D/g, '');
+    const number = flightInput.replace(/\D/g, '');
     if (!number) return sendYemot(res, 'הקישו את מספר הטיסה בספרות בלבד, ולסיום סולמית.', { inputName: 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
-    if (!/^\\d{1,5}$/.test(number)) return sendYemot(res, 'מספר הטיסה לא תקין. הקישו עד חמש ספרות ולסיום סולמית.', { inputName: 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
+    if (!/^\d{1,5}$/.test(number)) return sendYemot(res, 'מספר הטיסה לא תקין. הקישו עד חמש ספרות ולסיום סולמית.', { inputName: 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
     try {
       const records = await getFlights();
-      const matches = records.filter(record => String(record.CHFLTN ?? '').replace(/\\D/g, '') === number)
+      const matches = records.filter(record => String(record.CHFLTN ?? '').replace(/\D/g, '') === number)
         .sort((a, b) => (flightTime(a.CHPTOL) ?? flightTime(a.CHSTOL) ?? 0) - (flightTime(b.CHPTOL) ?? flightTime(b.CHSTOL) ?? 0))
         .slice(0, 3);
       if (!matches.length) return sendYemot(res, menuAgain(`לא נמצאה טיסה מספר ${digitsToHebrewWords(number)} בלוח הטיסות הנוכחי.`));
