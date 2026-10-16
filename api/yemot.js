@@ -139,8 +139,8 @@ export default async function handler(request, res) {
     const rawPlate = isDisability ? disabilityInput : vehicleInput;
     const plate = rawPlate.replace(/\D/g, '');
     const inputName = isDisability ? 'DisabilityPlate' : 'VehiclePlate';
-    if (!plate) return sendYemot(res, 'הקישו את מספר הרכב, בן 7 ספרות, ולסיום סולמית.', { inputName, min: isDisability ? 5 : 7, max: isDisability ? 9 : 7, dtmfTimeout: '7' });
-    if (isDisability ? !validatePlate(plate) : !/^\d{7}$/.test(plate)) return sendYemot(res, isDisability ? 'מספר הרישוי לא תקין. הקישו מספר בן 5 עד 9 ספרות, ולסיום סולמית.' : 'מספר הרישוי לא תקין. הקישו בדיוק 7 ספרות.', { inputName, min: isDisability ? 5 : 7, max: isDisability ? 9 : 7, dtmfTimeout: '7' });
+    if (!plate) return sendYemot(res, isDisability ? 'הקישו את מספר הרכב לבדיקת תו נכה, בן 5 עד 9 ספרות, ולסיום סולמית.' : 'הקישו את מספר הרכב, בן 7 או 8 ספרות, ולסיום סולמית.', { inputName, min: isDisability ? 5 : 7, max: isDisability ? 9 : 8, dtmfTimeout: '7' });
+    if (isDisability ? !validatePlate(plate) : !/^\d{7,8}$/.test(plate)) return sendYemot(res, isDisability ? 'מספר הרישוי לא תקין. הקישו מספר בן 5 עד 9 ספרות, ולסיום סולמית.' : 'מספר הרישוי לא תקין. הקישו 7 או 8 ספרות ולסיום סולמית.', { inputName, min: isDisability ? 5 : 7, max: isDisability ? 9 : 8, dtmfTimeout: '7' });
     try {
       if (isDisability) {
         const record = await findRecord(RESOURCES.disability, plate, 'MISPAR RECHEV');
@@ -210,7 +210,7 @@ export default async function handler(request, res) {
   const choice = branchChoices[branch] || rawChoice.replace(/\D/g, '') || '';
   if (!choice) return sendYemot(res, menuText(), { inputName: 'wm_nav', min: 1, max: 1, dtmfTimeout: '2' });
 
-  if (choice === '1') return sendYemot(res, 'הקישו את מספר הרכב, בן 7 ספרות, ולסיום סולמית.', { inputName: 'VehiclePlate', min: 7, max: 7, dtmfTimeout: '7' });
+  if (choice === '1') return sendYemot(res, 'הקישו את מספר הרכב, בן 7 או 8 ספרות, ולסיום סולמית.', { inputName: 'VehiclePlate', min: 7, max: 8, dtmfTimeout: '7' });
   if (choice === '2') return sendYemot(res, 'הקישו את מספר הרכב לבדיקת תו נכה. אפשר להקיש מספר בן 5 עד 9 ספרות; בסיום הקישו סולמית.', { inputName: branch === 'disability' ? 'ApiPhoneInput' : 'DisabilityPlate', min: 5, max: 9, dtmfTimeout: '7' });
   if (choice === '3') {
     try {
