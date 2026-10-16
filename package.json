@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=18" },
-  "scripts": { "test": "node --check api/vehicle.js && node --check api/disability-badge.js && node --check api/kinneret.js && node --check api/yemot.js && node --check api/_lib/data.js && node --check api/_lib/yemot.js" }
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --check api/vehicle.js && node --check api/disability-badge.js && node --check api/kinneret.js && node --check api/yemot.js && node --check api/_lib/data.js && node --check api/_lib/yemot.js && node --check api/flights.js && node --check api/kinneret-history.js"
+  }
 }
