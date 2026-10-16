@@ -4,10 +4,12 @@ import { formatNumber, readParts, digitsToHebrewWords } from './_lib/yemot.js';
 const FLIGHTS_RESOURCE = 'e83f763b-b7d7-479e-b172-ae981ddc6de5';
 
 function sendYemot(res, text, options = {}) {
-  const { inputName = 'Choice', min = 1, max = 1, dtmfTimeout = '7' } = options;
+  const { inputName = 'Choice', min = 1, max = 1, dtmfTimeout = '5' } = options;
   res.status(200).setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
-  res.end(`read=${readParts(text)}=${inputName},,${min},${max},Digits,yes,no,*,${dtmfTimeout}`);
+  // Yemot read format: variable, clear-old-value, min, max, timeout, input-type, ...
+  // Keep the same field order as the known-good response format used by this system.
+  res.end(`read=${readParts(text)}=${inputName},no,${min},${max},${dtmfTimeout},Digits,no,no,,,1,Ok`);
 }
 
 function menuText() {
@@ -140,7 +142,7 @@ export default async function handler(request, res) {
     if (!validatePlate(plate)) return sendYemot(res, isDisability ? 'מספר הרישוי לא תקין. הקישו מספר בן 5 עד 9 ספרות, ולסיום סולמית.' : 'מספר הרישוי לא תקין. הקישו 7 או 8 ספרות. במספר בן 7 ספרות סיימו בסולמית; במספר בן 8 ספרות האישור יתקבל אוטומטית.', { inputName, min: isDisability ? 5 : 7, max: isDisability ? 9 : 8, dtmfTimeout: '7' });
     try {
       if (isDisability) {
-        const record = await findRecord(RESOURCES.disability, plate);
+        const record = await findRecord(RESOURCES.disability, plate, 'MISPAR RECHEV');
         return sendYemot(res, menuAgain(record
           ? `נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.`
           : `לא נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.`));
