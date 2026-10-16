@@ -133,7 +133,7 @@ export default async function handler(request, res) {
   const dateInput = digitsParam(url, ['KinneretDate', 'DateInput']);
   const flightInput = digitsParam(url, ['FlightNumber']);
 
-  if (url.searchParams.has('VehiclePlate') || url.searchParams.has('DisabilityPlate')) {
+  if (url.searchParams.has('VehiclePlate') || url.searchParams.has('DisabilityPlate') || (String(url.searchParams.get('branch') || '').toLowerCase() === 'vehicle' && url.searchParams.has('ApiPhoneInput'))) {
     const isDisability = url.searchParams.has('DisabilityPlate');
     const rawPlate = isDisability ? disabilityInput : vehicleInput;
     const plate = rawPlate.replace(/\D/g, '');
