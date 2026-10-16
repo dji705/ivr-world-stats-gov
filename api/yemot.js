@@ -139,7 +139,7 @@ export default async function handler(request, res) {
     const plate = rawPlate.replace(/\D/g, '');
     const inputName = isDisability ? 'DisabilityPlate' : 'VehiclePlate';
     if (!plate) return sendYemot(res, 'הקישו את מספר הרכב, בן 7 ספרות, ולסיום סולמית.', { inputName, min: isDisability ? 5 : 7, max: isDisability ? 9 : 7, dtmfTimeout: '7' });
-    if (isDisability ? !validatePlate(plate) : !/^\\d{7}$/.test(plate)) return sendYemot(res, isDisability ? 'מספר הרישוי לא תקין. הקישו מספר בן 5 עד 9 ספרות, ולסיום סולמית.' : 'מספר הרישוי לא תקין. הקישו בדיוק 7 ספרות.', { inputName, min: isDisability ? 5 : 7, max: isDisability ? 9 : 7, dtmfTimeout: '7' });
+    if (isDisability ? !validatePlate(plate) : !/^\d{7}$/.test(plate)) return sendYemot(res, isDisability ? 'מספר הרישוי לא תקין. הקישו מספר בן 5 עד 9 ספרות, ולסיום סולמית.' : 'מספר הרישוי לא תקין. הקישו בדיוק 7 ספרות.', { inputName, min: isDisability ? 5 : 7, max: isDisability ? 9 : 7, dtmfTimeout: '7' });
     try {
       if (isDisability) {
         const record = await findRecord(RESOURCES.disability, plate, 'MISPAR RECHEV');
