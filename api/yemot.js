@@ -221,7 +221,7 @@ export default async function handler(request, res) {
       return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את נתוני מפלס הכינרת. אפשר לנסות שוב.'));
     }
   }
-  if (choice === '4') return sendYemot(res, 'לחיפוש מדידה היסטורית, הקישו תאריך בשמונה ספרות: יום, חודש, שנה. לדוגמה, לראשון בספטמבר אלפיים עשרים ושלוש הקישו אפס אחד, אפס תשע, שתיים אפס שתיים שלוש.', { inputName: 'KinneretDate', min: 8, max: 8 });
+  if (choice === '4') return sendYemot(res, 'לחיפוש מדידה היסטורית, הקישו תאריך בשמונה ספרות: יום, חודש, שנה. לסיום הקישו סולמית.', { inputName: 'KinneretDate', min: 8, max: 8, dtmfTimeout: '7' });
   if (choice === '8') return sendYemot(res, 'הקישו את מספר הטיסה, ספרה אחת עד חמש ספרות, ולסיום הקישו סולמית.', { inputName: branch === 'flight-search' ? 'ApiPhoneInput' : 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
   if (choice === '5' || choice === '6' || choice === '7') {
     try { return sendYemot(res, menuAgain(await flightsMessage(choice))); }
