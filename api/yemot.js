@@ -134,13 +134,14 @@ export default async function handler(request, res) {
   const flightInput = digitsParam(url, ['FlightNumber', 'ApiPhoneInput']);
   const activeBranch = String(url.searchParams.get('branch') || '').toLowerCase();
 
-  if (url.searchParams.has('VehiclePlate') || url.searchParams.has('DisabilityPlate') || (activeBranch === 'vehicle' && url.searchParams.has('ApiPhoneInput')) || (activeBranch === 'disability' && url.searchParams.has('ApiPhoneInput'))) {
+  if (url.searchParams.has('VehiclePlate') || url.searchParams.has('DisabilityPlate') || (['vehicle', 'vehicle-8', 'disability'].includes(activeBranch) && url.searchParams.has('ApiPhoneInput'))) {
     const isDisability = url.searchParams.has('DisabilityPlate') || activeBranch === 'disability';
-    const rawPlate = isDisability ? disabilityInput : vehicleInput;
+    const isVehicle8 = activeBranch === 'vehicle-8';
+    const rawPlate = isDisability ? disabilityInput : (isVehicle8 ? digitsParam(url, ['VehiclePlate', 'ApiPhoneInput']) : vehicleInput);
     const plate = rawPlate.replace(/\D/g, '');
-    const inputName = isDisability ? 'DisabilityPlate' : 'VehiclePlate';
-    if (!plate) return sendYemot(res, isDisability ? 'הקישו את מספר הרכב לבדיקת תו נכה, בן 5 עד 9 ספרות, ולסיום סולמית.' : 'הקישו את מספר הרכב, בן 7 או 8 ספרות, ולסיום סולמית.', { inputName, min: isDisability ? 5 : 7, max: isDisability ? 9 : 8, dtmfTimeout: '7' });
-    if (isDisability ? !validatePlate(plate) : !/^\d{7,8}$/.test(plate)) return sendYemot(res, isDisability ? 'מספר הרישוי לא תקין. הקישו מספר בן 5 עד 9 ספרות, ולסיום סולמית.' : 'מספר הרישוי לא תקין. הקישו 7 או 8 ספרות ולסיום סולמית.', { inputName, min: isDisability ? 5 : 7, max: isDisability ? 9 : 8, dtmfTimeout: '7' });
+    const inputName = isDisability ? 'DisabilityPlate' : (isVehicle8 ? 'ApiPhoneInput' : 'VehiclePlate');
+    if (!plate) return sendYemot(res, isDisability ? 'הקישו את מספר הרכב לבדיקת תו נכה, בן 5 עד 9 ספרות, ולסיום סולמית.' : (isVehicle8 ? 'הקישו מספר רישוי בן 8 ספרות בדיוק, ולסיום סולמית.' : 'הקישו את מספר הרכב, בן 7 או 8 ספרות, ולסיום סולמית.'), { inputName, min: isDisability ? 5 : (isVehicle8 ? 8 : 7), max: isDisability ? 9 : (isVehicle8 ? 8 : 8), dtmfTimeout: '7' });
+    if (isDisability ? !validatePlate(plate) : (isVehicle8 ? !/^\d{8}$/.test(plate) : !/^\d{7,8}$/.test(plate))) return sendYemot(res, isDisability ? 'מספר הרישוי לא תקין. הקישו מספר בן 5 עד 9 ספרות, ולסיום סולמית.' : (isVehicle8 ? 'מספר הרישוי לא תקין. הקישו בדיוק 8 ספרות ולסיום סולמית.' : 'מספר הרישוי לא תקין. הקישו 7 או 8 ספרות ולסיום סולמית.'), { inputName, min: isDisability ? 5 : (isVehicle8 ? 8 : 7), max: isDisability ? 9 : 8, dtmfTimeout: '7' });
     try {
       if (isDisability) {
         const record = await findRecord(RESOURCES.disability, plate, 'MISPAR RECHEV');
@@ -208,6 +209,7 @@ export default async function handler(request, res) {
   };
   const branch = String(url.searchParams.get('branch') || '').toLowerCase();
   const choice = branchChoices[branch] || rawChoice.replace(/\D/g, '') || '';
+  if (activeBranch === 'vehicle-8' && !url.searchParams.has('ApiPhoneInput')) return sendYemot(res, 'הקישו מספר רישוי בן 8 ספרות בדיוק, ולסיום סולמית.', { inputName: 'ApiPhoneInput', min: 8, max: 8, dtmfTimeout: '7' });
   if (!choice) return sendYemot(res, menuText(), { inputName: 'wm_nav', min: 1, max: 1, dtmfTimeout: '2' });
 
   if (choice === '1') return sendYemot(res, 'הקישו את מספר הרכב, בן 7 או 8 ספרות, ולסיום סולמית.', { inputName: 'VehiclePlate', min: 7, max: 8, dtmfTimeout: '7' });
