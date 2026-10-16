@@ -129,12 +129,13 @@ export default async function handler(request, res) {
   // קלטים ייחודיים לכל פעולה מאפשרים להישאר באותה שלוחת API,
   // ללא צורך בשלוחות פנימיות 81, 82 או 84.
   const vehicleInput = digitsParam(url, ['VehiclePlate', 'ApiPhoneInput']);
-  const disabilityInput = digitsParam(url, ['DisabilityPlate']);
+  const disabilityInput = digitsParam(url, ['DisabilityPlate', 'ApiPhoneInput']);
   const dateInput = digitsParam(url, ['KinneretDate', 'DateInput']);
-  const flightInput = digitsParam(url, ['FlightNumber']);
+  const flightInput = digitsParam(url, ['FlightNumber', 'ApiPhoneInput']);
+  const activeBranch = String(url.searchParams.get('branch') || '').toLowerCase();
 
-  if (url.searchParams.has('VehiclePlate') || url.searchParams.has('DisabilityPlate') || (String(url.searchParams.get('branch') || '').toLowerCase() === 'vehicle' && url.searchParams.has('ApiPhoneInput'))) {
-    const isDisability = url.searchParams.has('DisabilityPlate');
+  if (url.searchParams.has('VehiclePlate') || url.searchParams.has('DisabilityPlate') || (activeBranch === 'vehicle' && url.searchParams.has('ApiPhoneInput')) || (activeBranch === 'disability' && url.searchParams.has('ApiPhoneInput'))) {
+    const isDisability = url.searchParams.has('DisabilityPlate') || activeBranch === 'disability';
     const rawPlate = isDisability ? disabilityInput : vehicleInput;
     const plate = rawPlate.replace(/\D/g, '');
     const inputName = isDisability ? 'DisabilityPlate' : 'VehiclePlate';
@@ -161,10 +162,10 @@ export default async function handler(request, res) {
   }
 
 
-  if (url.searchParams.has('FlightNumber')) {
+  if (url.searchParams.has('FlightNumber') || (activeBranch === 'flight-search' && url.searchParams.has('ApiPhoneInput'))) {
     const number = flightInput.replace(/\D/g, '');
-    if (!number) return sendYemot(res, 'הקישו את מספר הטיסה בספרות בלבד, ולסיום סולמית.', { inputName: 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
-    if (!/^\d{1,5}$/.test(number)) return sendYemot(res, 'מספר הטיסה לא תקין. הקישו עד חמש ספרות ולסיום סולמית.', { inputName: 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
+    if (!number) return sendYemot(res, 'הקישו את מספר הטיסה, ספרה אחת עד חמש ספרות, ולסיום הקישו סולמית.', { inputName: activeBranch === 'flight-search' ? 'ApiPhoneInput' : 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
+    if (!/^\d{1,5}$/.test(number)) return sendYemot(res, 'מספר הטיסה לא תקין. הקישו ספרה אחת עד חמש ספרות ולסיום סולמית.', { inputName: activeBranch === 'flight-search' ? 'ApiPhoneInput' : 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
     try {
       const records = await getFlights();
       const matches = records.filter(record => String(record.CHFLTN ?? '').replace(/\D/g, '') === number)
@@ -209,7 +210,7 @@ export default async function handler(request, res) {
   if (!choice) return sendYemot(res, menuText(), { inputName: 'wm_nav', min: 1, max: 1, dtmfTimeout: '2' });
 
   if (choice === '1') return sendYemot(res, 'הקישו את מספר הרכב, בן 7 ספרות, ולסיום סולמית.', { inputName: 'VehiclePlate', min: 7, max: 7, dtmfTimeout: '7' });
-  if (choice === '2') return sendYemot(res, 'הקישו את מספר הרכב לבדיקת תו נכה, מספר בן 5 עד 9 ספרות, ולסיום סולמית.', { inputName: 'DisabilityPlate', min: 5, max: 9, dtmfTimeout: '7' });
+  if (choice === '2') return sendYemot(res, 'הקישו את מספר הרכב לבדיקת תו נכה. אפשר להקיש מספר בן 5 עד 9 ספרות; בסיום הקישו סולמית.', { inputName: branch === 'disability' ? 'ApiPhoneInput' : 'DisabilityPlate', min: 5, max: 9, dtmfTimeout: '7' });
   if (choice === '3') {
     try {
       const result = await dataGov(RESOURCES.kinneret, { limit: '100', sort: 'Survey_Date desc' });
@@ -221,7 +222,7 @@ export default async function handler(request, res) {
     }
   }
   if (choice === '4') return sendYemot(res, 'לחיפוש מדידה היסטורית, הקישו תאריך בשמונה ספרות: יום, חודש, שנה. לדוגמה, לראשון בספטמבר אלפיים עשרים ושלוש הקישו אפס אחד, אפס תשע, שתיים אפס שתיים שלוש.', { inputName: 'KinneretDate', min: 8, max: 8 });
-  if (choice === '8') return sendYemot(res, 'הקישו את מספר הטיסה בספרות בלבד, ולסיום סולמית.', { inputName: 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
+  if (choice === '8') return sendYemot(res, 'הקישו את מספר הטיסה, ספרה אחת עד חמש ספרות, ולסיום הקישו סולמית.', { inputName: branch === 'flight-search' ? 'ApiPhoneInput' : 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
   if (choice === '5' || choice === '6' || choice === '7') {
     try { return sendYemot(res, menuAgain(await flightsMessage(choice))); }
     catch (_) { return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את נתוני הטיסות. נסו שוב מאוחר יותר.')); }
