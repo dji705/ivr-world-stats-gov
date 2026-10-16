@@ -11,29 +11,20 @@ const RESOURCES = {
 
 // Friendly Hebrew labels are used both in the web interface and in IVR speech.
 const VEHICLE_FIELDS = [
-  ['mispar_rechev', 'מספר רישוי'],
-  ['tozeret_cd', 'קוד יצרן'],
   ['sug_degem', 'סוג הדגם'],
   ['tozeret_nm', 'יצרן הרכב'],
-  ['degem_cd', 'קוד דגם'],
   ['degem_nm', 'דגם הרכב'],
-  ['ramat_gimur', 'רמת גימור'],
-  ['ramat_eivzur_betihuty', 'רמת האבזור הבטיחותי'],
-  ['kvutzat_zihum', 'דרגת זיהום האוויר'],
   ['shnat_yitzur', 'שנת ייצור'],
-  ['degem_manoa', 'דגם המנוע'],
   ['mivchan_acharon_dt', 'תאריך הטסט האחרון'],
   ['tokef_dt', 'תוקף רישיון הרכב'],
   ['baalut', 'סוג הבעלות'],
-  ['misgeret', 'מספר שלדה'],
-  ['tzeva_cd', 'קוד צבע'],
   ['tzeva_rechev', 'צבע הרכב'],
   ['zmig_kidmi', 'מידת הצמיגים הקדמיים'],
   ['zmig_ahori', 'מידת הצמיגים האחוריים'],
   ['sug_delek_nm', 'סוג הדלק'],
-  ['horaat_rishum', 'הוראת רישום'],
   ['moed_aliya_lakvish', 'תאריך עלייה לכביש'],
-  ['kinuy_mishari', 'שם מסחרי']
+  ['kinuy_mishari', 'שם מסחרי'],
+  ['mispar_rechev', 'מספר רישוי']
 ];
 
 function requestUrl(request) {
