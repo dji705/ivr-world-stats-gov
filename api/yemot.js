@@ -221,16 +221,16 @@ export default async function handler(request, res) {
       const result = await dataGov(RESOURCES.kinneret, { limit: '100', sort: 'Survey_Date desc' });
       const record = (result.records || []).filter(item => dateKey(item.Survey_Date))
         .sort((a, b) => dateKey(b.Survey_Date).localeCompare(dateKey(a.Survey_Date)))[0];
-      return sendYemot(res, menuAgain(record ? formatKinneretRecord(record, true) : 'לא נמצאה מדידה של מפלס הכינרת במאגר.'));
+      return sendYemot(res, `${record ? formatKinneretRecord(record, true) : 'לא נמצאה מדידה של מפלס הכינרת במאגר.'} להאזנה חוזרת, הקישו 1.`, { inputName: 'ApiPhoneInput', min: 1, max: 1, dtmfTimeout: '7' });
     } catch (_) {
-      return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את נתוני מפלס הכינרת. אפשר לנסות שוב.'));
+      return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני מפלס הכינרת. להאזנה חוזרת, הקישו 1.', { inputName: 'ApiPhoneInput', min: 1, max: 1, dtmfTimeout: '7' });
     }
   }
   if (choice === '4') return sendYemot(res, 'לחיפוש מדידה היסטורית, הקישו תאריך בשמונה ספרות: יום, חודש, שנה. לסיום הקישו סולמית.', { inputName: branch === 'kinneret-date' ? 'ApiPhoneInput' : 'KinneretDate', min: 8, max: 8, dtmfTimeout: '7' });
   if (choice === '8') return sendYemot(res, 'הקישו את מספר הטיסה, ספרה אחת עד חמש ספרות, ולסיום הקישו סולמית.', { inputName: branch === 'flight-search' ? 'ApiPhoneInput' : 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
   if (choice === '5' || choice === '6' || choice === '7') {
-    try { return sendYemot(res, menuAgain(await flightsMessage(choice))); }
-    catch (_) { return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את נתוני הטיסות. נסו שוב מאוחר יותר.')); }
+    try { return sendYemot(res, `${await flightsMessage(choice)} להאזנה חוזרת, הקישו 1.`, { inputName: 'ApiPhoneInput', min: 1, max: 1, dtmfTimeout: '7' }); }
+    catch (_) { return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני הטיסות. נסו שוב מאוחר יותר. להאזנה חוזרת, הקישו 1.', { inputName: 'ApiPhoneInput', min: 1, max: 1, dtmfTimeout: '7' }); }
   }
   return sendYemot(res, 'הבחירה לא זוהתה. ' + menuText(), { inputName: 'wm_nav', min: 1, max: 1 });
 }
