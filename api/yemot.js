@@ -149,18 +149,16 @@ export default async function handler(request, res) {
     try {
       if (isDisability) {
         const record = await findRecord(RESOURCES.disability, plate, 'MISPAR RECHEV');
-        return sendYemot(res, menuAgain(record
-          ? `נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.`
-          : `לא נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.`));
+        return sendYemot(res, `${record ? `נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.` : `לא נמצא תו נכה לרכב שמספרו ${digitsToHebrewWords(plate)}.`} הקישו מספר רכב נוסף לבדיקת תו נכה, בן 5 עד 9 ספרות.`, { inputName: 'ApiPhoneInput', min: 5, max: 9, dtmfTimeout: '7' });
       }
       const found = await Promise.all(RESOURCES.vehicles.map(id => findRecord(id, plate)));
       const record = Object.assign({}, ...found.filter(Boolean));
-      if (!Object.keys(record).length) return sendYemot(res, menuAgain(`לא נמצא רכב שמספרו ${digitsToHebrewWords(plate)}.`));
+      if (!Object.keys(record).length) return sendYemot(res, `לא נמצא רכב שמספרו ${digitsToHebrewWords(plate)}. הקישו מספר רישוי נוסף בן ${isVehicle8 ? '8' : '7'} ספרות.`, { inputName: 'ApiPhoneInput', min: isVehicle8 ? 8 : 7, max: isVehicle8 ? 8 : 7, dtmfTimeout: '7' });
       const details = VEHICLE_FIELDS
         .filter(([key]) => record[key] !== null && record[key] !== undefined && String(record[key]).trim() !== '')
         .map(([key, label]) => `${label}: ${key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key])}`)
         .join('. ');
-      return sendYemot(res, menuAgain(`תוצאות בדיקת הרכב. ${details}`));
+      return sendYemot(res, `תוצאות בדיקת הרכב. ${details}. להקשת מספר רישוי נוסף, הקישו ${isVehicle8 ? '8' : '7'} ספרות.`, { inputName: 'ApiPhoneInput', min: isVehicle8 ? 8 : 7, max: isVehicle8 ? 8 : 7, dtmfTimeout: '7' });
     } catch (_) {
       return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את נתוני הבדיקה. אפשר לנסות שוב מאוחר יותר.'));
     }
@@ -176,8 +174,8 @@ export default async function handler(request, res) {
       const matches = records.filter(record => String(record.CHFLTN ?? '').replace(/\D/g, '') === number)
         .sort((a, b) => (flightTime(a.CHPTOL) ?? flightTime(a.CHSTOL) ?? 0) - (flightTime(b.CHPTOL) ?? flightTime(b.CHSTOL) ?? 0))
         .slice(0, 3);
-      if (!matches.length) return sendYemot(res, menuAgain(`לא נמצאה טיסה מספר ${digitsToHebrewWords(number)} בלוח הטיסות הנוכחי.`));
-      return sendYemot(res, menuAgain('תוצאות חיפוש לפי מספר טיסה. ' + matches.map(record => formatFlight(record, flightDirection(record))).join(' ')));
+      if (!matches.length) return sendYemot(res, `לא נמצאה טיסה מספר ${digitsToHebrewWords(number)} בלוח הטיסות הנוכחי. הקישו מספר טיסה נוסף, ספרה אחת עד חמש ספרות.`, { inputName: 'ApiPhoneInput', min: 1, max: 5, dtmfTimeout: '7' });
+      return sendYemot(res, 'תוצאות חיפוש לפי מספר טיסה. ' + matches.map(record => formatFlight(record, flightDirection(record))).join(' ') + ' לחיפוש טיסה נוספת, הקישו מספר טיסה, ספרה אחת עד חמש ספרות.', { inputName: 'ApiPhoneInput', min: 1, max: 5, dtmfTimeout: '7' });
     } catch (_) {
       return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את נתוני הטיסות. נסו שוב מאוחר יותר.'));
     }
@@ -193,9 +191,9 @@ export default async function handler(request, res) {
         const result = await dataGov(RESOURCES.kinneret, { limit: '1000', sort: 'Survey_Date desc' });
         record = (result.records || []).find(item => dateKey(item.Survey_Date) === requestedDate);
       }
-      return sendYemot(res, menuAgain(record ? formatKinneretRecord(record) : `לא נמצאה מדידת מפלס כינרת בתאריך ${hebrewDate(requestedDate)}.`));
+      return sendYemot(res, `${record ? formatKinneretRecord(record) : `לא נמצאה מדידת מפלס כינרת בתאריך ${hebrewDate(requestedDate)}.`} לחיפוש תאריך נוסף, הקישו יום, חודש ושנה בשמונה ספרות.`, { inputName: 'ApiPhoneInput', min: 8, max: 8, dtmfTimeout: '7' });
     } catch (_) {
-      return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את היסטוריית מפלס הכינרת. אפשר לנסות שוב מאוחר יותר.'));
+      return sendYemot(res, 'לא ניתן לקבל כרגע את היסטוריית מפלס הכינרת. אפשר לנסות שוב. הקישו תאריך בשמונה ספרות: יום, חודש, שנה.', { inputName: 'ApiPhoneInput', min: 8, max: 8, dtmfTimeout: '7' });
     }
   }
 
