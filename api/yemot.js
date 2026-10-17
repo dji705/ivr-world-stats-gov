@@ -145,7 +145,7 @@ export default async function handler(request, res) {
     const maxPlate = isDisability ? 9 : (isVehicle8 ? 8 : (isVehicle7 ? 7 : 8));
     const promptPlate = isDisability ? 'הקישו את מספר הרכב לבדיקת תו נכה, בן 5 עד 9 ספרות, ולסיום סולמית.' : (isVehicle8 ? 'הקישו מספר רישוי בן 8 ספרות בדיוק, ולסיום סולמית.' : (isVehicle7 ? 'הקישו מספר רישוי בן 7 ספרות בדיוק, ולסיום סולמית.' : 'הקישו את מספר הרכב, בן 7 או 8 ספרות, ולסיום סולמית.'));
     if (!plate) return sendYemot(res, promptPlate, { inputName, min: minPlate, max: maxPlate, dtmfTimeout: '7' });
-    if (isDisability ? !validatePlate(plate) : (isVehicle8 ? !/^\d{8}$/.test(plate) : (isVehicle7 ? !/^\d{7}$/.test(plate) : !/^\d{7,8}$/.test(plate)))) return sendYemot(res, isDisability ? 'מספר הרישוי לא תקין. הקישו מספר בן 5 עד 9 ספרות, ולסיום סולמית.' : (isVehicle8 ? 'מספר הרישוי לא תקין. הקישו בדיוק 8 ספרות ולסיום סולמית.' : (isVehicle7 ? 'מספר הרישוי לא תקין. הקישו בדיוק 7 ספרות ולסיום סולמית.' : 'מספר הרישוי לא תקין. הקישו 7 או 8 ספרות ולסיום סולמית.'), { inputName, min: minPlate, max: maxPlate, dtmfTimeout: '7' });
+    if (isDisability ? !validatePlate(plate) : (isVehicle8 ? !/^\d{8}$/.test(plate) : (isVehicle7 ? !/^\d{7}$/.test(plate) : !/^\d{7,8}$/.test(plate)))) return sendYemot(res, isDisability ? 'מספר הרישוי לא תקין. הקישו מספר בן 5 עד 9 ספרות, ולסיום סולמית.' : (isVehicle8 ? 'מספר הרישוי לא תקין. הקישו בדיוק 8 ספרות ולסיום סולמית.' : (isVehicle7 ? 'מספר הרישוי לא תקין. הקישו בדיוק 7 ספרות ולסיום סולמית.' : 'מספר הרישוי לא תקין. הקישו 7 או 8 ספרות ולסיום סולמית.')), { inputName, min: minPlate, max: maxPlate, dtmfTimeout: '7' });
     try {
       if (isDisability) {
         const record = await findRecord(RESOURCES.disability, plate, 'MISPAR RECHEV');
