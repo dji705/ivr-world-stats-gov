@@ -132,7 +132,20 @@ export default async function handler(request, res) {
   const disabilityInput = digitsParam(url, ['DisabilityPlate', 'ApiPhoneInput']);
   const dateInput = digitsParam(url, ['KinneretDate', 'DateInput', 'ApiPhoneInput']);
   const flightInput = digitsParam(url, ['FlightNumber', 'ApiPhoneInput']);
-  const activeBranch = String(url.searchParams.get('branch') || '').toLowerCase();
+  // Read branch both as a normal query parameter and when Yemot
+  // forwards a fixed api_add_N value like "branch=departures".
+  function getBranchParam() {
+    const direct = url.searchParams.get('branch');
+    if (direct) return direct;
+    for (const [key, value] of url.searchParams.entries()) {
+      if (/^api_add_\d+$/i.test(key)) {
+        const match = String(value).match(/(?:^|&)branch=([^&]+)/i);
+        if (match) return decodeURIComponent(match[1].replace(/\+/g, ' '));
+      }
+    }
+    return '';
+  }
+  const activeBranch = String(getBranchParam() || '').trim().toLowerCase();
 
   if (url.searchParams.has('VehiclePlate') || url.searchParams.has('DisabilityPlate') || (['vehicle', 'vehicle-8', 'disability'].includes(activeBranch) && url.searchParams.has('ApiPhoneInput'))) {
     const isDisability = url.searchParams.has('DisabilityPlate') || activeBranch === 'disability';
@@ -209,7 +222,7 @@ export default async function handler(request, res) {
     delays: '7',
     'flight-search': '8',
   };
-  const branch = String(url.searchParams.get('branch') || '').toLowerCase();
+  const branch = activeBranch;
   const choice = branchChoices[branch] || rawChoice.replace(/\D/g, '') || '';
   if (activeBranch === 'vehicle-8' && !url.searchParams.has('ApiPhoneInput')) return sendYemot(res, 'הקישו מספר רישוי בן 8 ספרות בדיוק, ולסיום סולמית.', { inputName: 'ApiPhoneInput', min: 8, max: 8, dtmfTimeout: '7' });
   if (!choice) return sendYemot(res, menuText(), { inputName: 'wm_nav', min: 1, max: 1, dtmfTimeout: '2' });
