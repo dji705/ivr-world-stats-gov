@@ -11,27 +11,29 @@ const RESOURCES = {
 
 // Friendly Hebrew labels are used both in the web interface and in IVR speech.
 const VEHICLE_FIELDS = [
-  ['mispar_rechev', 'מספר רישוי'],
   ['sug_degem', 'סוג הדגם'],
   ['tozeret_nm', 'יצרן הרכב'],
-  ['tozeret_cd', 'קוד יצרן'],
-  ['degem_nm', 'קוד או שם דגם'],
-  ['degem_cd', 'קוד דגם'],
-  ['kinuy_mishari', 'שם מסחרי'],
-  ['ramat_gimur', 'רמת גימור'],
+  ['degem_nm', 'דגם הרכב'],
   ['shnat_yitzur', 'שנת ייצור'],
-  ['degem_manoa', 'דגם מנוע'],
-  ['sug_delek_nm', 'סוג הדלק'],
-  ['kvutzat_zihum', 'קבוצת זיהום'],
-  ['ramat_eivzur_betihuty', 'רמת אבזור בטיחותי'],
   ['mivchan_acharon_dt', 'תאריך הטסט האחרון'],
   ['tokef_dt', 'תוקף רישיון הרכב'],
   ['baalut', 'סוג הבעלות'],
   ['tzeva_rechev', 'צבע הרכב'],
-  ['tzeva_cd', 'קוד צבע'],
   ['zmig_kidmi', 'מידת הצמיגים הקדמיים'],
   ['zmig_ahori', 'מידת הצמיגים האחוריים'],
+  ['sug_delek_nm', 'סוג הדלק'],
   ['moed_aliya_lakvish', 'תאריך עלייה לכביש'],
+  ['kinuy_mishari', 'שם מסחרי'],
+  ['mispar_rechev', 'מספר רישוי'],
+  // Additional fields that exist in the official vehicle registry:
+  ['tozeret_cd', 'קוד יצרן'],
+  ['degem_cd', 'קוד דגם'],
+  ['ramat_gimur', 'רמת גימור'],
+  ['ramat_eivzur_betihuty', 'רמת אבזור בטיחותי'],
+  ['kvutzat_zihum', 'קבוצת זיהום'],
+  ['degem_manoa', 'דגם מנוע'],
+  ['misgeret', 'מספר שלדה'],
+  ['tzeva_cd', 'קוד צבע'],
   ['horaat_rishum', 'קוד הוראת רישום']
 ];
 
