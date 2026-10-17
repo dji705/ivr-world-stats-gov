@@ -160,7 +160,7 @@ export default async function handler(request, res) {
         .join('. ');
       return sendYemot(res, `תוצאות בדיקת הרכב. ${details}. להקשת מספר רישוי נוסף, הקישו ${isVehicle8 ? '8' : '7'} ספרות.`, { inputName: 'ApiPhoneInput', min: isVehicle8 ? 8 : 7, max: isVehicle8 ? 8 : 7, dtmfTimeout: '7' });
     } catch (_) {
-      return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את נתוני הבדיקה. אפשר לנסות שוב מאוחר יותר.'));
+      return sendYemot(res, `לא ניתן לקבל כרגע את נתוני הבדיקה. אפשר לנסות שוב. ${promptPlate}`, { inputName, min: minPlate, max: maxPlate, dtmfTimeout: '7' });
     }
   }
 
@@ -177,7 +177,7 @@ export default async function handler(request, res) {
       if (!matches.length) return sendYemot(res, `לא נמצאה טיסה מספר ${digitsToHebrewWords(number)} בלוח הטיסות הנוכחי. הקישו מספר טיסה נוסף, ספרה אחת עד חמש ספרות.`, { inputName: 'ApiPhoneInput', min: 1, max: 5, dtmfTimeout: '7' });
       return sendYemot(res, 'תוצאות חיפוש לפי מספר טיסה. ' + matches.map(record => formatFlight(record, flightDirection(record))).join(' ') + ' לחיפוש טיסה נוספת, הקישו מספר טיסה, ספרה אחת עד חמש ספרות.', { inputName: 'ApiPhoneInput', min: 1, max: 5, dtmfTimeout: '7' });
     } catch (_) {
-      return sendYemot(res, menuAgain('לא ניתן לקבל כרגע את נתוני הטיסות. נסו שוב מאוחר יותר.'));
+      return sendYemot(res, 'לא ניתן לקבל כרגע את נתוני הטיסות. נסו שוב. הקישו מספר טיסה, ספרה אחת עד חמש ספרות.', { inputName: 'ApiPhoneInput', min: 1, max: 5, dtmfTimeout: '7' });
     }
   }
 
