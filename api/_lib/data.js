@@ -24,18 +24,8 @@ const VEHICLE_FIELDS = [
   ['sug_delek_nm', 'סוג הדלק'],
   ['moed_aliya_lakvish', 'תאריך עלייה לכביש'],
   ['kinuy_mishari', 'שם מסחרי'],
-  ['mispar_rechev', 'מספר רישוי'],
-  // Additional fields that exist in the official vehicle registry:
-  ['tozeret_cd', 'קוד יצרן'],
-  ['degem_cd', 'קוד דגם'],
-  ['ramat_gimur', 'רמת גימור'],
-  ['ramat_eivzur_betihuty', 'רמת אבזור בטיחותי'],
-  ['kvutzat_zihum', 'קבוצת זיהום'],
-  ['degem_manoa', 'דגם מנוע'],
-  ['misgeret', 'מספר שלדה'],
-  ['tzeva_cd', 'קוד צבע'],
-  ['horaat_rishum', 'קוד הוראת רישום']
-];
+  ['mispar_rechev', 'מספר רישוי']
+];;
 
 function requestUrl(request) {
   const rawUrl = request?.url || '/';
