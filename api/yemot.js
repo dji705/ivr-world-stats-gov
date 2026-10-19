@@ -49,6 +49,22 @@ function parseDateInput(raw) {
   if (date.getUTCFullYear() !== year || date.getUTCMonth() + 1 !== month || date.getUTCDate() !== day) return null;
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
+function formatVehicleDate(value) {
+  if (value === null || value === undefined || String(value).trim() === '') return value;
+  const raw = String(value).trim();
+  let day, month, year;
+  let match = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[T\s].*)?$/);
+  if (match) {
+    year = Number(match[1]); month = Number(match[2]); day = Number(match[3]);
+  } else {
+    match = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:[T\s].*)?$/);
+    if (!match) return raw;
+    day = Number(match[1]); month = Number(match[2]); year = Number(match[3]);
+  }
+  if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900) return raw;
+  return `יום ${day}, חודש ${month}, שנת ${year}`;
+}
+
 function flightTime(value) {
   const time = Date.parse(value);
   return Number.isFinite(time) ? time : null;
@@ -169,7 +185,7 @@ export default async function handler(request, res) {
       if (!Object.keys(record).length) return sendYemot(res, `לא נמצא רכב שמספרו ${digitsToHebrewWords(plate)}. הקישו מספר רישוי נוסף בן ${isVehicle8 ? '8' : '7'} ספרות.`, { inputName: 'ApiPhoneInput', min: isVehicle8 ? 8 : 7, max: isVehicle8 ? 8 : 7, dtmfTimeout: '7' });
       const details = VEHICLE_FIELDS
         .filter(([key]) => record[key] !== null && record[key] !== undefined && String(record[key]).trim() !== '')
-        .map(([key, label]) => `${label}: ${key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key])}`)
+        .map(([key, label]) => `${label}: ${['mivchan_acharon_dt', 'tokef_dt'].includes(key) ? formatVehicleDate(record[key]) : (key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key]))}`)
         .join('. ');
       return sendYemot(res, `תוצאות בדיקת הרכב. ${details}. להקשת מספר רישוי נוסף, הקישו ${isVehicle8 ? '8' : '7'} ספרות.`, { inputName: 'ApiPhoneInput', min: isVehicle8 ? 8 : 7, max: isVehicle8 ? 8 : 7, dtmfTimeout: '7' });
     } catch (_) {
