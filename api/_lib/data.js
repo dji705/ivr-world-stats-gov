@@ -9,23 +9,10 @@ const RESOURCES = {
   kinneret: '2de7b543-e13d-4e7e-b4c8-56071bc4d3c8'
 };
 
-// Friendly Hebrew labels are used both in the web interface and in IVR speech.
+// Only read the commercial model name, labeled simply as "הדגם".
 const VEHICLE_FIELDS = [
-  ['sug_degem', 'סוג הדגם'],
-  ['tozeret_nm', 'יצרן הרכב'],
-  ['degem_nm', 'דגם הרכב'],
-  ['shnat_yitzur', 'שנת ייצור'],
-  ['mivchan_acharon_dt', 'תאריך הטסט האחרון'],
-  ['tokef_dt', 'תוקף רישיון הרכב'],
-  ['baalut', 'סוג הבעלות'],
-  ['tzeva_rechev', 'צבע הרכב'],
-  ['zmig_kidmi', 'מידת הצמיגים הקדמיים'],
-  ['zmig_ahori', 'מידת הצמיגים האחוריים'],
-  ['sug_delek_nm', 'סוג הדלק'],
-  ['moed_aliya_lakvish', 'תאריך עלייה לכביש'],
-  ['kinuy_mishari', 'שם מסחרי'],
-  ['mispar_rechev', 'מספר רישוי']
-];;
+  ['kinuy_mishari', 'הדגם']
+];
 
 function requestUrl(request) {
   const rawUrl = request?.url || '/';
@@ -41,14 +28,12 @@ function plateFrom(request) {
 
 function validatePlate(plate) { return /^[0-9]{5,9}$/.test(plate); }
 
-// Short per-instance cache: reduces repeated calls to data.gov.il. Vercel may start
-// a fresh instance at any time, so this is an optimization, not a durable cache.
 const dataCache = new Map();
 const CACHE_LIMIT = 200;
 function cacheTtl(resourceId) {
-  if (resourceId === 'e83f763b-b7d7-479e-b172-ae981ddc6de5') return 60_000; // flights: 1 minute
-  if (resourceId === RESOURCES.kinneret) return 5 * 60_000; // Kinneret: 5 minutes
-  return 60_000; // plate lookups: 1 minute
+  if (resourceId === 'e83f763b-b7d7-479e-b172-ae981ddc6de5') return 60_000;
+  if (resourceId === RESOURCES.kinneret) return 5 * 60_000;
+  return 60_000;
 }
 
 async function dataGov(resourceId, params = {}, timeoutMs = 8000) {
@@ -68,7 +53,6 @@ async function dataGov(resourceId, params = {}, timeoutMs = 8000) {
     if (!response.ok) throw new Error(`מקור הנתונים החזיר ${response.status}`);
     const body = await response.json();
     if (!body.success || !body.result) throw new Error('תשובה לא תקינה ממקור הנתונים');
-    // Keep cache bounded so a stream of different license plates cannot grow memory forever.
     if (dataCache.size >= CACHE_LIMIT) {
       const firstKey = dataCache.keys().next().value;
       if (firstKey !== undefined) dataCache.delete(firstKey);
