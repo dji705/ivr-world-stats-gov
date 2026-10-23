@@ -7,9 +7,8 @@ function sendYemot(res, text, options = {}) {
   const { inputName = 'wm_nav', min = 1, max = 1, dtmfTimeout = '5' } = options;
   res.status(200).setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
-  // Yemot read format: variable, clear-old-value, min, max, timeout, input-type, ...
-  // Keep the same field order as the known-good response format used by this system.
-  res.end(`read=${readParts(text)}=${inputName},no,${min},${max},${dtmfTimeout},Digits,no,no,,,1,Ok`);
+  // Match the reference Yemot format: variable, clear-old-value, max digits, min digits, timeout, input type, block-star, block-zero, replace keys, allowed keys, replay count, on-empty.
+  res.end(`read=${readParts(text)}=${inputName},no,${max},${min},${dtmfTimeout},Digits,no,no,,,1,Ok`);
 }
 
 function menuText() {
