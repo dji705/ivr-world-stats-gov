@@ -152,11 +152,15 @@ export default async function handler(request, res) {
   function getBranchParam() {
     const direct = url.searchParams.get('branch');
     if (direct) return direct;
-    for (const [key, value] of url.searchParams.entries()) {
-      if (/^api_add_\d+$/i.test(key)) {
-        const match = String(value).match(/(?:^|&)branch=([^&]+)/i);
-        if (match) return decodeURIComponent(match[1].replace(/\+/g, ' '));
-      }
+    // Yemot can forward api_add_N values as either "branch=arrivals",
+    // "branch%3Darrivals", or just the branch name, depending on setup.
+    for (const [key, rawValue] of url.searchParams.entries()) {
+      if (!/^api_add_\d+$/i.test(key)) continue;
+      const value = String(rawValue).trim();
+      const decoded = value.replace(/%3D/ig, '=').replace(/%26/ig, '&');
+      const match = decoded.match(/(?:^|[&?])branch=([^&]+)/i);
+      if (match) return match[1].replace(/\+/g, ' ');
+      if (/^(vehicle|vehicle-8|disability|kinneret|kinneret-history|kinneret-date|arrivals|departures|delays|flight-search)$/i.test(decoded)) return decoded;
     }
     return '';
   }
