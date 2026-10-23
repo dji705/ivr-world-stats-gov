@@ -17,7 +17,39 @@ const VEHICLE_FIELDS = [
 function requestUrl(request) {
   const rawUrl = request?.url || '/';
   const host = request?.headers?.host || request?.headers?.get?.('host') || 'localhost';
-  return new URL(rawUrl, `https://${host}`);
+
+  // Yemot sends API parameters in its native format:
+  // ?ApiCallId^...*ApiPhone^...*wm_nav^3
+  // Convert each *-separated KEY^VALUE pair into a standard query parameter
+  // so URLSearchParams can read it. Keep ordinary key=value URLs unchanged.
+  const question = rawUrl.indexOf('?');
+  if (question < 0) return new URL(rawUrl, `https://${host}`);
+  const base = rawUrl.slice(0, question);
+  const query = rawUrl.slice(question + 1).split('#')[0];
+  if (!query.includes('^') && !query.includes('*')) return new URL(rawUrl, `https://${host}`);
+
+  const pairs = [];
+  for (const part of query.split('*')) {
+    if (!part) continue;
+    const separator = part.indexOf('^');
+    if (separator >= 0) {
+      const key = part.slice(0, separator);
+      const value = part.slice(separator + 1);
+      if (key) pairs.push([key, value]);
+    } else if (part.includes('=')) {
+      const separatorEq = part.indexOf('=');
+      const key = part.slice(0, separatorEq);
+      const value = part.slice(separatorEq + 1);
+      if (key) pairs.push([key, value]);
+    } else if (part) {
+      // Bare keys such as "0" can represent a keypad press in Yemot logs.
+      pairs.push([part, '']);
+    }
+  }
+
+  const normalized = new URL(base, `https://${host}`);
+  for (const [key, value] of pairs) normalized.searchParams.append(key, value);
+  return normalized;
 }
 
 function plateFrom(request) {
