@@ -61,7 +61,7 @@ function formatVehicleDate(value) {
     day = Number(match[1]); month = Number(match[2]); year = Number(match[3]);
   }
   if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900) return raw;
-  return `יום ${day}, חודש ${month}, שנת ${year}`;
+  return `יום ${day}, החודש הוא ${month}, שנת ${year}`;
 }
 
 function flightTime(value) {
