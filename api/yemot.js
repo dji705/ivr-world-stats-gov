@@ -188,7 +188,7 @@ export default async function handler(request, res) {
       if (!Object.keys(record).length) return sendYemot(res, `לא נמצא רכב שמספרו ${digitsToHebrewWords(plate)}. הקישו מספר רישוי נוסף בן ${isVehicle8 ? '8' : '7'} ספרות.`, { inputName: 'ApiPhoneInput', min: isVehicle8 ? 8 : 7, max: isVehicle8 ? 8 : 7, dtmfTimeout: '7' });
       const details = VEHICLE_FIELDS
         .filter(([key]) => record[key] !== null && record[key] !== undefined && String(record[key]).trim() !== '')
-        .map(([key, label]) => `${label}: ${['mivchan_acharon_dt', 'tokef_dt'].includes(key) ? formatVehicleDate(record[key]) : (key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key]))}`)
+        .map(([key, label]) => `${label}: ${['mivchan_acharon_dt', 'tokef_dt', 'moed_aliya_lakvish'].includes(key) ? formatVehicleDate(record[key]) : (key === 'mispar_rechev' ? digitsToHebrewWords(record[key]) : (typeof record[key] === 'number' ? formatNumber(record[key]) : record[key]))}`)
         .join('. ');
       return sendYemot(res, `תוצאות בדיקת הרכב. ${details}. להקשת מספר רישוי נוסף, הקישו ${isVehicle8 ? '8' : '7'} ספרות.`, { inputName: 'ApiPhoneInput', min: isVehicle8 ? 8 : 7, max: isVehicle8 ? 8 : 7, dtmfTimeout: '7' });
     } catch (_) {
