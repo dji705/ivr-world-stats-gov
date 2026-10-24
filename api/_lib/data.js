@@ -9,9 +9,19 @@ const RESOURCES = {
   kinneret: '2de7b543-e13d-4e7e-b4c8-56071bc4d3c8'
 };
 
-// Only read the commercial model name, labeled simply as "הדגם".
+// שדות הרכב שהמשתמש בחר להקריא, לפי סדר ההקראה.
 const VEHICLE_FIELDS = [
-  ['kinuy_mishari', 'הדגם']
+  ['mispar_rechev', 'מספר רכב'],
+  ['tozeret_nm', 'יצרן'],
+  ['sug_degem', 'סוג דגם'],
+  ['kinuy_mishari', 'כינוי מסחרי'],
+  ['shnat_yitzur', 'שנת ייצור'],
+  ['mivchan_acharon_dt', 'מבחן אחרון'],
+  ['tokef_dt', 'תוקף רישום'],
+  ['baalut', 'סוג בעלות'],
+  ['tzeva_rechev', 'צבע'],
+  ['sug_delek_nm', 'סוג דלק'],
+  ['moed_aliya_lakvish', 'מועד עלייה לכביש']
 ];
 
 function requestUrl(request) {
@@ -42,7 +52,6 @@ function requestUrl(request) {
       const value = part.slice(separatorEq + 1);
       if (key) pairs.push([key, value]);
     } else if (part) {
-      // Bare keys such as "0" can represent a keypad press in Yemot logs.
       pairs.push([part, '']);
     }
   }
