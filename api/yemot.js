@@ -166,7 +166,7 @@ export default async function handler(request, res) {
   }
   const activeBranch = String(getBranchParam() || '').trim().toLowerCase();
 
-  if (url.searchParams.has('VehiclePlate') || url.searchParams.has('DisabilityPlate') || (['vehicle', 'vehicle-8', 'disability'].includes(activeBranch) && url.searchParams.has('ApiPhoneInput'))) {
+  if (url.searchParams.has('VehiclePlate') || url.searchParams.has('DisabilityPlate') || ['vehicle', 'vehicle-8', 'disability'].includes(activeBranch)) {
     const isDisability = url.searchParams.has('DisabilityPlate') || activeBranch === 'disability';
     const isVehicle8 = activeBranch === 'vehicle-8';
     const isVehicle7 = activeBranch === 'vehicle';
