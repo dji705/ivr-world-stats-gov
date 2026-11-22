@@ -18,9 +18,13 @@ function menuAgain(text) { return `${text} לתפריט הראשי, הקישו �
 function digitsParam(url, names) {
   for (const name of names) {
     const value = url.searchParams.get(name);
-    if (value !== null && value !== '') return String(value);
+    if (value !== null && String(value).trim() !== '') return String(value);
   }
   return '';
+}
+function hasValue(url, name) {
+  const value = url.searchParams.get(name);
+  return value !== null && String(value).trim() !== '';
 }
 function dateKey(value) {
   if (!value) return '';
@@ -137,7 +141,7 @@ export default async function handler(request, res) {
   const url = requestUrl(request);
 
   // Detect star before extracting numeric menu choices; '*' is not a digit.
-  if ([...url.searchParams.values()].some(value => String(value).includes('*'))) {
+  if (['wm_nav', 'Choice', 'ApiPhoneInput', 'Digits', 'val', 'VehiclePlate', 'DisabilityPlate', 'KinneretDate', 'DateInput', 'FlightNumber'].some(name => String(url.searchParams.get(name) || '').includes('*'))) {
     return sendYemot(res, menuText(), { inputName: 'wm_nav', min: 1, max: 1, dtmfTimeout: '2' });
   }
 
@@ -166,8 +170,8 @@ export default async function handler(request, res) {
   }
   const activeBranch = String(getBranchParam() || '').trim().toLowerCase();
 
-  if (url.searchParams.has('VehiclePlate') || url.searchParams.has('DisabilityPlate') || ['vehicle', 'vehicle-8', 'disability'].includes(activeBranch)) {
-    const isDisability = url.searchParams.has('DisabilityPlate') || activeBranch === 'disability';
+  if (hasValue(url, 'VehiclePlate') || hasValue(url, 'DisabilityPlate') || ['vehicle', 'vehicle-8', 'disability'].includes(activeBranch)) {
+    const isDisability = hasValue(url, 'DisabilityPlate') || activeBranch === 'disability';
     const isVehicle8 = activeBranch === 'vehicle-8';
     const isVehicle7 = activeBranch === 'vehicle';
     const rawPlate = isDisability ? disabilityInput : digitsParam(url, ['VehiclePlate', 'ApiPhoneInput']);
@@ -197,7 +201,7 @@ export default async function handler(request, res) {
   }
 
 
-  if (url.searchParams.has('FlightNumber') || (activeBranch === 'flight-search' && url.searchParams.has('ApiPhoneInput'))) {
+  if (hasValue(url, 'FlightNumber') || (activeBranch === 'flight-search' && hasValue(url, 'ApiPhoneInput'))) {
     const number = flightInput.replace(/\D/g, '');
     if (!number) return sendYemot(res, 'הקישו את מספר הטיסה, ספרה אחת עד חמש ספרות, ולסיום הקישו סולמית.', { inputName: activeBranch === 'flight-search' ? 'ApiPhoneInput' : 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
     if (!/^\d{1,5}$/.test(number)) return sendYemot(res, 'מספר הטיסה לא תקין. הקישו ספרה אחת עד חמש ספרות ולסיום סולמית.', { inputName: activeBranch === 'flight-search' ? 'ApiPhoneInput' : 'FlightNumber', min: 1, max: 5, dtmfTimeout: '7' });
@@ -213,7 +217,7 @@ export default async function handler(request, res) {
     }
   }
 
-  if (url.searchParams.has('KinneretDate') || url.searchParams.has('DateInput') || (activeBranch === 'kinneret-date' && url.searchParams.has('ApiPhoneInput'))) {
+  if (hasValue(url, 'KinneretDate') || hasValue(url, 'DateInput') || (activeBranch === 'kinneret-date' && hasValue(url, 'ApiPhoneInput'))) {
     const requestedDate = parseDateInput(dateInput);
     if (!requestedDate) return sendYemot(res, 'התאריך לא תקין. הקישו שמונה ספרות לפי הסדר יום, חודש, שנה, ולסיום סולמית.', { inputName: activeBranch === 'kinneret-date' ? 'ApiPhoneInput' : 'KinneretDate', min: 8, max: 8, dtmfTimeout: '7' });
     try {
